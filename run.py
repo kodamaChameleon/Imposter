@@ -9,23 +9,17 @@ import argparse
 import sys
 from pathlib import Path
 
-from utils.config import DATASETS
-from utils.data import provision_datasets
-
+from utils.config import make_config, DOWNLOAD_CHOICES
+from utils.data import fetch_all
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Repo runner / dataset provisioner.")
+    parser = argparse.ArgumentParser(description="DeepFail Command-Line Utility")
 
     parser.add_argument(
-        "--sort",
-        nargs="*",
-        choices=["train", "val", "test", "all"],
-        default=[],
-        help=(
-            "Which split(s) to provision/sort. "
-            "Choose from: train, val, test. "
-            "You can pass multiple, e.g. --sort train val. "
-        ),
+        "--download",
+        nargs="+",
+        choices=DOWNLOAD_CHOICES,
+        help="Download datasets: all, sfhq_t2i, ffhq, tdpne (ex. --download ffhq tpdne).",
     )
     parser.add_argument(
         "--root",
@@ -44,12 +38,18 @@ def main() -> int:
     if len(sys.argv) == 1:
         parser.print_help(sys.stdout)
         return 0
+    
+    # Download required datasets
+    if len(args.download) > 0:
 
-    # Sort data
-    if len(args.sort) > 0:
-        if "all" in args.sort:
-            args.sort = ["train", "val", "test"]
-        provision_datasets(DATASETS, root=args.root, splits=args.sort)
+        # Normalize "all"
+        if "all" in args.download:
+            args.download = set(DOWNLOAD_CHOICES) - {"all"}
+
+        cfg, kcfg = make_config(root=args.root)
+        paths = fetch_all(cfg, kcfg, include=args.download)
+        for name, p in paths.items():
+            print(f"[ok] {name}: {p}")
 
     return 0
 
