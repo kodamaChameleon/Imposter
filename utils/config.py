@@ -4,8 +4,6 @@ Name:        utils/config.py
 Purpose:     Configuration management for DeepFail.
 Author:      Kodama Chameleon <contact@kodamachameleon.com>
 """
-from __future__ import annotations
-
 from dataclasses import dataclass
 from pathlib import Path
 import os
@@ -22,6 +20,25 @@ def load_env(dotenv_path: Path | None = None) -> None:
         return
     load_dotenv(dotenv_path=dotenv_path, override=False)
 
+# -------------------------
+# Env helpers
+# -------------------------
+
+def _env_int(name: str, default: int) -> int:
+    val = os.getenv(name)
+    if val is None:
+        return default
+    try:
+        return int(val)
+    except ValueError:
+        return default
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    val = os.getenv(name)
+    if val is None:
+        return default
+    return val.lower() in {"1", "true", "yes", "on"}
 
 @dataclass(frozen=True)
 class KaggleConfig:
@@ -67,7 +84,18 @@ class DatasetConfig:
         return self.ffhq_dir / "_ffhq-dataset-repo"
 
 
-def make_config(root: Path | str = "datasets", dotenv_path: Path | None = None) -> tuple[DatasetConfig, KaggleConfig]:
+@dataclass(frozen=True)
+class JpegConfig:
+    """
+    JPEG encoding settings used to standardize ALL images through the same lossy pipeline.
+    """
+    quality = _env_int("JPEG_QUALITY", 95)               # Pillow quality
+    subsampling = _env_int("JPEG_SUBSAMPLING", 0)        # 4:4:4 (no chroma subsampling)
+    optimize = _env_bool("JPEG_OPTIMIZE", True)          # better Huffman tables (slower encode, smaller file)
+    progressive = _env_bool("JPEG_PROGRESSIVE", False)   # baseline JPEG for consistency/simplicity
+
+
+def make_config(root: Path | str = "datasets", dotenv_path: Path | None = None) -> tuple[DatasetConfig, KaggleConfig, JpegConfig]:
     """
     Build config after loading .env (if available).
     You can override DATA_ROOT via env, e.g. DATA_ROOT=/mnt/data/datasets
@@ -78,4 +106,4 @@ def make_config(root: Path | str = "datasets", dotenv_path: Path | None = None) 
     final_root = Path(env_root) if env_root else Path(root)
     final_root = final_root.expanduser().resolve()
 
-    return DatasetConfig(root=final_root), KaggleConfig()
+    return DatasetConfig(root=final_root), KaggleConfig(), JpegConfig()
