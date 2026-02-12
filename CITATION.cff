@@ -1,0 +1,46 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite this repository and the referenced works below."
+title: "DeepFail: Failure Analysis of Deepfake Image Detection In-the-Wild"
+license: MIT
+authors:
+  - family-names: Kodama
+    given-names: Chameleon
+    email: contact@kodamachameleon.com
+
+references:
+  - type: conference-paper
+    title: "Towards Universal Fake Image Detectors that Generalize Across Generative Models"
+    authors:
+      - family-names: Ojha
+        given-names: Utkarsh
+      - family-names: Li
+        given-names: Yuheng
+      - family-names: Lee
+        given-names: Yong Jae
+    year: 2023
+    conference: "IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)"
+
+  - type: conference-paper
+    title: "Improving synthetic image detection towards generalization: An image transformation perspective"
+    authors:
+      - family-names: Li
+        given-names: Ouxiang
+      - family-names: Cai
+        given-names: Jiayin
+      - family-names: Hao
+        given-names: Yanbin
+      - family-names: Jiang
+        given-names: Xiaolong
+      - family-names: Hu
+        given-names: Yao
+      - family-names: Feng
+        given-names: Fuli
+    year: 2025
+    conference: "Proceedings of the 31st ACM SIGKDD Conference on Knowledge Discovery and Data Mining"
+
+  - type: software
+    title: "ChatGPT (GPT-5.2)"
+    authors:
+      - name: OpenAI
+    year: 2026
+    url: "https://chat.openai.com"

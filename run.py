@@ -3,7 +3,6 @@
 Name:        run.py
 Purpose:     Entry point for DeepFail operations.
 Author:      Kodama Chameleon <contact@kodamachameleon.com>
-Co-Author:   ChatGPT 5.2
 """
 import argparse
 import sys

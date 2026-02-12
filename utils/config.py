@@ -3,7 +3,6 @@
 Name:        utils/config.py
 Purpose:     Configuration management for DeepFail.
 Author:      Kodama Chameleon <contact@kodamachameleon.com>
-Co-Author:   ChatGPT 5.2
 """
 from __future__ import annotations
 

@@ -3,7 +3,6 @@
 Name:        utils/data.py
 Purpose:     Dataset fetching utilities for DeepFail (strict + reproducible).
 Author:      Kodama Chameleon <contact@kodamachameleon.com>
-Co-Author:   ChatGPT 5.2
 """
 from pathlib import Path
 from typing import Iterable
