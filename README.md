@@ -2,9 +2,9 @@
 
 Failure Analysis of Deepfake Image Detection In-the-Wild
 
-# Setup
+## ⚙️ Setup
 
-## Installation
+### Installation
 
 **Clone the Repo**  
 Clone the repo using git or download and extract the zip file.
@@ -26,7 +26,7 @@ Copy .env_example to .env and update required variables.
 cp .env_example .env
 ```
 
-## Data Processing
+### Data Processing
 **Download**  
 Download the required datasets using.
 ```
@@ -38,7 +38,7 @@ python3 run.py --download
 > - SFHQ-T2I (24.5GB)
 > - TPDNE (4.77GB)
 
-# Acknowledgements
+## ✨ Acknowledgements
 
 This project was made possible by:
 
