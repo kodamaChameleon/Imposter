@@ -2,7 +2,7 @@
 
 Failure Analysis of Deepfake Image Detection In-the-Wild
 
-## ⚙️ Setup
+## ⚙️ Usage
 
 ### Installation
 
