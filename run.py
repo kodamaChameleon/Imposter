@@ -11,6 +11,7 @@ from pathlib import Path
 from utils.config import make_config, DOWNLOAD_CHOICES
 from utils.download import fetch_all
 from utils.sort import sort_datasets
+from utils.kid import run_kid
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="DeepFail Command-Line Utility")
@@ -34,6 +35,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--sort",
         action="store_true",
         help="Sort/preprocess datasets into datasets/sorted (validate 1024x1024, de-dup across all, FFHQ png->jpg, move files).",
+    )
+    parser.add_argument(
+        "--kid",
+        nargs="+",
+        metavar="PATH",
+        help="Compute KID between two datasets. Usage: --kid <pathA> <pathB> [output.json]",
     )
 
     return parser
@@ -63,13 +70,30 @@ def main() -> int:
         for name, p in paths.items():
             print(f"[ok] {name}: {p}")
 
-    # Sort / preprocess datasets
+    # Sorting and preprocess datasets
     if args.sort:
         stats = sort_datasets(root=args.root, jpeg=jcfg)
         print(stats.render_summary())
 
-    return 0
+    if args.kid:
+        if len(args.kid) not in (2, 3):
+            print("[err] --kid expects 2 or 3 args: <pathA> <pathB> [output.json]")
+            return 2
 
+        path_a = Path(args.kid[0])
+        path_b = Path(args.kid[1])
+        output = Path(args.kid[2]) if len(args.kid) == 3 else None
+
+        res = run_kid(path_a, path_b, output=output)
+        print("[kid] dataset_a:", res.dataset_a)
+        print("[kid] dataset_b:", res.dataset_b)
+        print("[kid] num_images:", res.num_images_a, res.num_images_b)
+        print("[kid] kid_mean:", res.kid_mean)
+        print("[kid] kid_std :", res.kid_std)
+        if output is not None:
+            print("[ok] wrote:", output)
+
+    return 0
 
 if __name__ == "__main__":
     raise SystemExit(main())
