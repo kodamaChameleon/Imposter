@@ -1,19 +1,23 @@
 # DeepFail
 
-Failure Analysis of Deepfake Image Detection In-the-Wild
+![DeepFail Banner](https://raw.githubusercontent.com/kodamaChameleon/DeepFail/main/banner.png)
+
+## 🚀 About
+
+Failure Analysis of Deepfake Image Detection In-the-Wild downloads, pre-processes, and transforms the [SFHQ-T2I](https://www.kaggle.com/datasets/selfishgene/sfhq-t2i-synthetic-faces-from-text-2-image-models) and [TPDNE](https://www.kaggle.com/datasets/almightyj/person-face-dataset-thispersondoesnotexist) for adversarial testing using the [UniversalFakeDetect](https://github.com/WisconsinAIVision/UniversalFakeDetect) and [Simple Preserved and Augmented FEatures (SAFE)](https://github.com/Ouxiang-Li/SAFE) detection methods. Real facial imagery is pulled from the [Flickr-Faces-HQ Dataset](https://www.kaggle.com/datasets/gibi13/flickr-faces-hq-dataset-ffhq). Follow  ⚙️Usage step-by-step for reproducability or implement portions as needed for your specific scenario.
 
 ## ⚙️ Usage
 
-### Installation
+### A. Installation
 
-**Clone the Repo**  
+**1. Clone the Repo**  
 Clone the repo using git or download and extract the zip file.
 ```bash
 git clone https://github.com/kodamaChameleon/DeepFail.git
 cd DeepFail
 ```
 
-**Environment**  
+**2. Environment**  
 Conda is the preferred environment for this project.
 ```bash
 conda create -n DeepFail python=3.13
@@ -26,8 +30,8 @@ Copy .env_example to .env and update required variables.
 cp .env_example .env
 ```
 
-### Data Processing
-**Download**  
+### B. Data Processing
+**1. Download**  
 Download the required datasets.
 ```bash
 python3 run.py --download
@@ -38,7 +42,7 @@ python3 run.py --download
 > - SFHQ-T2I (24.5GB)
 > - TPDNE (4.77GB)
 
-**Sort**  
+**2. Sort**  
 Sort the downloaded datasets into a new `/datasets/sorted` directory by generative model.
 ```bash
 python3 run.py --sort
@@ -49,7 +53,7 @@ python3 run.py --sort
 > - Ensures standard 1024x1024 pixel resolution
 > - Re-encodes all images to jpg (regardless of original filetype) for standardization
 
-**Kernel Inception Distance (KID)**  
+**3. Kernel Inception Distance (KID)**  
 KID measures distance between two datasets for a given feature set. Lower numbers represent a higher degree of similarity. Example:
 ```bash
 python3 run.py --kid datasets/sorted/FFHQ datasets/sorted/DALLE3
@@ -58,6 +62,16 @@ python3 run.py --kid datasets/sorted/FFHQ datasets/sorted/DALLE3
 > Optional:
 > - Input an output json file: `--kid datasets/sorted/FFHQ datasets/sorted/DALLE3 dalle3_kid.json`
 > - Specify a feature extraction model (default is inception with standard ImageNet weights applied): `--feature-model dinov2_vitb14`
+
+**4. CLIP score**  
+Measures semantic quality between text prompts and associated images. For handling large prompts (>77) clip mode options include:  
+- *sliding*: take the sliding average across prompts greater than token indices sequence length
+- *truncate*: shorten prompts greater than token indices sequence length
+```bash
+python3 run.py --clip --clip-mode sliding
+```
+> [!IMPORTANT]
+> This option assumes images and descriptions have been sorted using `--sort` method.
 
 ## ✨ Acknowledgements
 
