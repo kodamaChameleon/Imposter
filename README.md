@@ -28,8 +28,8 @@ cp .env_example .env
 
 ### Data Processing
 **Download**  
-Download the required datasets using.
-```
+Download the required datasets.
+```bash
 python3 run.py --download
 ```
 > [!CAUTION]
@@ -37,6 +37,27 @@ python3 run.py --download
 > - FFHQ (95.77GB)
 > - SFHQ-T2I (24.5GB)
 > - TPDNE (4.77GB)
+
+**Sort**  
+Sort the downloaded datasets into a new `/datasets/sorted` directory by generative model.
+```bash
+python3 run.py --sort
+```
+> [!NOTE]
+> In addition to sorting, this option also:
+> - Avoids sorting duplicate images.
+> - Ensures standard 1024x1024 pixel resolution
+> - Re-encodes all images to jpg (regardless of original filetype) for standardization
+
+**Kernel Inception Distance (KID)**  
+KID measures distance between two datasets for a given feature set. Lower numbers represent a higher degree of similarity. Example:
+```bash
+python3 run.py --kid datasets/sorted/FFHQ datasets/sorted/DALLE3
+```
+> [!NOTE]
+> Optional:
+> - Input an output json file: `--kid datasets/sorted/FFHQ datasets/sorted/DALLE3 dalle3_kid.json`
+> - Specify a feature extraction model (default is inception with standard ImageNet weights applied): `--feature-model dinov2_vitb14`
 
 ## ✨ Acknowledgements
 
