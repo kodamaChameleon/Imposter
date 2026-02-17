@@ -13,6 +13,7 @@ from utils.download import fetch_all
 from utils.sort import sort_datasets
 from utils.kid import run_kid
 
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="DeepFail Command-Line Utility")
 
@@ -41,6 +42,13 @@ def build_parser() -> argparse.ArgumentParser:
         nargs="+",
         metavar="PATH",
         help="Compute KID between two datasets. Usage: --kid <pathA> <pathB> [output.json]",
+    )
+    parser.add_argument(
+        "--feature-model",
+        type=str,
+        default="inception",
+        choices=["inception", "dinov2_vitb14"],
+        help="Feature extractor for KID. Default: inception (ImageNet). Options: inception, dinov2_vitb14",
     )
 
     return parser
@@ -84,7 +92,7 @@ def main() -> int:
         path_b = Path(args.kid[1])
         output = Path(args.kid[2]) if len(args.kid) == 3 else None
 
-        res = run_kid(path_a, path_b, output=output)
+        res = run_kid(path_a, path_b, output=output, feature_model=args.feature_model)
         print("[kid] dataset_a:", res.dataset_a)
         print("[kid] dataset_b:", res.dataset_b)
         print("[kid] num_images:", res.num_images_a, res.num_images_b)
