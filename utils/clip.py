@@ -7,6 +7,7 @@ Author:      Kodama Chameleon <contact@kodamachameleon.com>
 import json
 from dataclasses import dataclass
 from pathlib import Path
+from typing import List
 
 import pandas as pd
 import torch
@@ -36,6 +37,42 @@ class CLIPResult:
 
 
 # -----------------------------
+# Text helpers
+# -----------------------------
+
+def chunk_prompt(tokenizer, text: str, max_len: int = 77, stride: int = 50) -> List[torch.Tensor]:
+    tokens = tokenizer(
+        text,
+        return_tensors="pt",
+        truncation=False,
+        add_special_tokens=False,
+    )["input_ids"][0]
+
+    chunks = []
+
+    for i in range(0, len(tokens), stride):
+        window = tokens[i : i + max_len - 2]
+
+        if len(window) == 0:
+            break
+
+        window = torch.cat(
+            [
+                torch.tensor([tokenizer.bos_token_id]),
+                window,
+                torch.tensor([tokenizer.eos_token_id]),
+            ]
+        )
+
+        chunks.append(window)
+
+        if i + max_len >= len(tokens):
+            break
+
+    return chunks
+
+
+# -----------------------------
 # Core
 # -----------------------------
 
@@ -45,58 +82,102 @@ def run_clip(
     output: Path | None = None,
     model_name: str = "openai/clip-vit-large-patch14",
     device: str | None = None,
+    batch_size: int = 32,
 ) -> CLIPResult:
-    """
-    Compute CLIP score for SFHQ-T2I sorted dataset.
-    """
 
     device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+    use_fp16 = device == "cuda"
 
     if csv_path is None:
         csv_path = root / "SFHQ-T2I" / "SFHQ_T2I_dataset.csv"
 
     sorted_dir = root / "sorted"
-
     df = pd.read_csv(csv_path)
 
     model = CLIPModel.from_pretrained(model_name).to(device)
     processor = CLIPProcessor.from_pretrained(model_name)
 
+    if use_fp16:
+        model = model.half()
+
+    tokenizer = processor.tokenizer
+
     scores = []
     per_model = {}
 
-    for row in tqdm(df.itertuples(), total=len(df)):
-        img_path = sorted_dir / row.model_used / row.image_filename
+    rows = list(df.itertuples())
 
-        if not img_path.exists():
+    for start in tqdm(range(0, len(rows), batch_size)):
+
+        batch_rows = rows[start : start + batch_size]
+
+        images = []
+        text_chunks = []
+        chunk_map = []
+        model_names = []
+
+        for idx, row in enumerate(batch_rows):
+            img_path = sorted_dir / row.model_used / row.image_filename
+
+            if not img_path.exists():
+                continue
+
+            try:
+                image = Image.open(img_path).convert("RGB")
+            except Exception:
+                continue
+
+            chunks = chunk_prompt(tokenizer, row.text_prompt)
+
+            if not chunks:
+                continue
+
+            images.append(image)
+            model_names.append(row.model_used)
+
+            for c in chunks:
+                text_chunks.append(c)
+                chunk_map.append(len(images) - 1)
+
+        if not images:
             continue
 
-        try:
-            image = Image.open(img_path).convert("RGB")
+        image_inputs = processor(images=images, return_tensors="pt").to(device, non_blocking=True)
 
-            inputs = processor(
-                text=[row.text_prompt],
-                images=image,
-                return_tensors="pt",
-                padding=True,
-            ).to(device)
+        text_inputs = tokenizer.pad(
+            {"input_ids": text_chunks},
+            return_tensors="pt",
+        ).to(device, non_blocking=True)
 
-            with torch.no_grad():
-                outputs = model(**inputs)
-                img_emb = outputs.image_embeds
-                txt_emb = outputs.text_embeds
+        with torch.inference_mode():
 
-                img_emb = img_emb / img_emb.norm(dim=-1, keepdim=True)
-                txt_emb = txt_emb / txt_emb.norm(dim=-1, keepdim=True)
+            outputs = model(
+                pixel_values=image_inputs["pixel_values"],
+                input_ids=text_inputs["input_ids"],
+                attention_mask=text_inputs["attention_mask"],
+            )
 
-                score = (img_emb * txt_emb).sum().item()
+            img_emb = outputs.image_embeds
+            txt_emb = outputs.text_embeds
+
+            img_emb = img_emb / img_emb.norm(dim=-1, keepdim=True)
+            txt_emb = txt_emb / txt_emb.norm(dim=-1, keepdim=True)
+
+            sims = txt_emb @ img_emb.T
+
+        # aggregate sliding window → MAX
+        for img_idx in range(len(images)):
+
+            chunk_indices = [i for i, m in enumerate(chunk_map) if m == img_idx]
+
+            if not chunk_indices:
+                continue
+
+            score = sims[chunk_indices, img_idx].max().item()
 
             scores.append(score)
 
-            per_model.setdefault(row.model_used, []).append(score)
-
-        except Exception:
-            continue
+            per_model.setdefault(model_names[img_idx], []).append(score)
 
     per_model_mean = {
         m: float(torch.tensor(v).mean()) for m, v in per_model.items()
