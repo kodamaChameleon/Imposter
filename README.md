@@ -1,6 +1,6 @@
 # DeepFail
 
-![DeepFail Banner](https://raw.githubusercontent.com/kodamaChameleon/DeepFail/main/banner.png)
+<img src="./banner.png" height="500">  
 
 ## 🚀 About
 
