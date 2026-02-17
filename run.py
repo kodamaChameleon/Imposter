@@ -12,6 +12,7 @@ from utils.config import make_config, DOWNLOAD_CHOICES
 from utils.download import fetch_all
 from utils.sort import sort_datasets
 from utils.kid import run_kid
+from utils.clip import run_clip
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -49,6 +50,20 @@ def build_parser() -> argparse.ArgumentParser:
         default="inception",
         choices=["inception", "dinov2_vitb14"],
         help="Feature extractor for KID. Default: inception (ImageNet). Options: inception, dinov2_vitb14",
+    )
+    parser.add_argument(
+    "--clip",
+        nargs="?",
+        const="clip.json",
+        metavar="OUTPUT",
+        help="Compute CLIP score for SFHQ-T2I (optionally provide output.json).",
+    )
+    parser.add_argument(
+        "--clip-mode",
+        type=str,
+        default="sliding",
+        choices=["sliding", "truncate"],
+        help="CLIP scoring mode: sliding (long prompts) or truncate (standard 77 token).",
     )
 
     return parser
@@ -99,6 +114,21 @@ def main() -> int:
         print("[kid] kid_mean:", res.kid_mean)
         print("[kid] kid_std :", res.kid_std)
         if output is not None:
+            print("[ok] wrote:", output)
+    
+    if args.clip is not None:
+        output = Path(args.clip) if isinstance(args.clip, str) else None
+
+        res = run_clip(root=args.root, output=output)
+
+        print("[clip] dataset:", res.dataset)
+        print("[clip] num_images:", res.num_images)
+        print("[clip] global_mean:", res.global_mean)
+
+        for m, v in res.per_model.items():
+            print(f"[clip] {m}: {v}")
+
+        if output:
             print("[ok] wrote:", output)
 
     return 0
