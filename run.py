@@ -58,6 +58,13 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="OUTPUT",
         help="Compute CLIP score for SFHQ-T2I (optionally provide output.json).",
     )
+    parser.add_argument(
+        "--clip-mode",
+        type=str,
+        default="sliding",
+        choices=["sliding", "truncate"],
+        help="CLIP scoring mode: sliding (long prompts) or truncate (standard 77 token).",
+    )
 
     return parser
 

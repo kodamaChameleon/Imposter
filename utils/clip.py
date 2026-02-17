@@ -37,7 +37,7 @@ class CLIPResult:
 
 
 # -----------------------------
-# Text helpers
+# Helpers
 # -----------------------------
 
 def chunk_prompt(tokenizer, text: str, max_len: int = 77, stride: int = 50) -> List[torch.Tensor]:
@@ -72,6 +72,87 @@ def chunk_prompt(tokenizer, text: str, max_len: int = 77, stride: int = 50) -> L
     return chunks
 
 
+def load_clip(model_name: str, device: str, use_fp16: bool):
+    model = CLIPModel.from_pretrained(model_name).to(device)
+    processor = CLIPProcessor.from_pretrained(model_name)
+    model.eval()
+
+    if use_fp16:
+        model = model.half()
+
+    return model, processor, processor.tokenizer
+
+
+def build_text_inputs_sliding(tokenizer, prompts, device):
+    text_chunks = []
+    chunk_map = []
+
+    for img_idx, text in enumerate(prompts):
+        chunks = chunk_prompt(tokenizer, text)
+
+        for c in chunks:
+            text_chunks.append(c)
+            chunk_map.append(img_idx)
+
+    text_inputs = tokenizer.pad(
+        {"input_ids": text_chunks},
+        return_tensors="pt",
+    ).to(device, non_blocking=True)
+
+    return text_inputs, chunk_map
+
+
+def build_text_inputs_truncate(processor, prompts, device):
+    return processor(
+        text=prompts,
+        return_tensors="pt",
+        padding=True,
+        truncation=True,
+        max_length=77,
+    ).to(device, non_blocking=True)
+
+
+def encode_batch(model, image_inputs, text_inputs):
+    with torch.inference_mode():
+
+        outputs = model(
+            pixel_values=image_inputs["pixel_values"],
+            input_ids=text_inputs["input_ids"],
+            attention_mask=text_inputs["attention_mask"],
+        )
+
+        img_emb = outputs.image_embeds.float()
+        txt_emb = outputs.text_embeds.float()
+
+        img_emb = img_emb / img_emb.norm(dim=-1, keepdim=True)
+        txt_emb = txt_emb / txt_emb.norm(dim=-1, keepdim=True)
+
+        sims = txt_emb @ img_emb.T
+
+    return sims
+
+
+def aggregate_sliding(sims, chunk_map, model_names, scores, per_model):
+    for img_idx in range(len(model_names)):
+
+        idxs = [i for i, m in enumerate(chunk_map) if m == img_idx]
+
+        if not idxs:
+            continue
+
+        score = sims[idxs, img_idx].max().item()
+
+        scores.append(score)
+        per_model.setdefault(model_names[img_idx], []).append(score)
+
+
+def aggregate_truncate(sims, model_names, scores, per_model):
+    for i, score in enumerate(sims.diag()):
+        val = score.item()
+        scores.append(val)
+        per_model.setdefault(model_names[i], []).append(val)
+
+
 # -----------------------------
 # Core
 # -----------------------------
@@ -83,7 +164,11 @@ def run_clip(
     model_name: str = "openai/clip-vit-large-patch14",
     device: str | None = None,
     batch_size: int = 32,
+    clip_mode: str = "sliding",
 ) -> CLIPResult:
+    
+    if clip_mode not in {"sliding", "truncate"}:
+        raise ValueError(f"Invalid clip_mode: {clip_mode}")
 
     device = device or ("cuda" if torch.cuda.is_available() else "cpu")
     use_fp16 = device == "cuda"
@@ -91,16 +176,10 @@ def run_clip(
     if csv_path is None:
         csv_path = root / "SFHQ-T2I" / "SFHQ_T2I_dataset.csv"
 
-    sorted_dir = root / "sorted"
     df = pd.read_csv(csv_path)
+    sorted_dir = root / "sorted"
 
-    model = CLIPModel.from_pretrained(model_name).to(device)
-    processor = CLIPProcessor.from_pretrained(model_name)
-
-    if use_fp16:
-        model = model.half()
-
-    tokenizer = processor.tokenizer
+    model, processor, tokenizer = load_clip(model_name, device, use_fp16)
 
     scores = []
     per_model = {}
@@ -109,75 +188,39 @@ def run_clip(
 
     for start in tqdm(range(0, len(rows), batch_size)):
 
-        batch_rows = rows[start : start + batch_size]
+        batch = rows[start:start + batch_size]
 
-        images = []
-        text_chunks = []
-        chunk_map = []
-        model_names = []
+        images, prompts, model_names = [], [], []
 
-        for idx, row in enumerate(batch_rows):
+        for row in batch:
             img_path = sorted_dir / row.model_used / row.image_filename
 
             if not img_path.exists():
                 continue
 
             try:
-                image = Image.open(img_path).convert("RGB")
+                images.append(Image.open(img_path).convert("RGB"))
+                prompts.append(row.text_prompt)
+                model_names.append(row.model_used)
             except Exception:
                 continue
-
-            chunks = chunk_prompt(tokenizer, row.text_prompt)
-
-            if not chunks:
-                continue
-
-            images.append(image)
-            model_names.append(row.model_used)
-
-            for c in chunks:
-                text_chunks.append(c)
-                chunk_map.append(len(images) - 1)
 
         if not images:
             continue
 
         image_inputs = processor(images=images, return_tensors="pt").to(device, non_blocking=True)
 
-        text_inputs = tokenizer.pad(
-            {"input_ids": text_chunks},
-            return_tensors="pt",
-        ).to(device, non_blocking=True)
+        if clip_mode == "sliding":
+            text_inputs, chunk_map = build_text_inputs_sliding(tokenizer, prompts, device)
+        elif clip_mode == "truncate":
+            text_inputs = build_text_inputs_truncate(processor, prompts, device)
 
-        with torch.inference_mode():
+        sims = encode_batch(model, image_inputs, text_inputs)
 
-            outputs = model(
-                pixel_values=image_inputs["pixel_values"],
-                input_ids=text_inputs["input_ids"],
-                attention_mask=text_inputs["attention_mask"],
-            )
-
-            img_emb = outputs.image_embeds
-            txt_emb = outputs.text_embeds
-
-            img_emb = img_emb / img_emb.norm(dim=-1, keepdim=True)
-            txt_emb = txt_emb / txt_emb.norm(dim=-1, keepdim=True)
-
-            sims = txt_emb @ img_emb.T
-
-        # aggregate sliding window → MAX
-        for img_idx in range(len(images)):
-
-            chunk_indices = [i for i, m in enumerate(chunk_map) if m == img_idx]
-
-            if not chunk_indices:
-                continue
-
-            score = sims[chunk_indices, img_idx].max().item()
-
-            scores.append(score)
-
-            per_model.setdefault(model_names[img_idx], []).append(score)
+        if clip_mode == "sliding":
+            aggregate_sliding(sims, chunk_map, model_names, scores, per_model)
+        elif clip_mode == "truncate":
+            aggregate_truncate(sims, model_names, scores, per_model)
 
     per_model_mean = {
         m: float(torch.tensor(v).mean()) for m, v in per_model.items()
