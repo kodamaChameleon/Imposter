@@ -87,6 +87,23 @@ python3 run.py --split
 > - `--split-csv` outputs a csv with headers split, dataset, label and filename (default: datasets/train_val_test.csv).
 > - `--split-seed` ensures reproducability during random selection of images (default: 1337).
 
+### C. Training
+
+> [!CAUTION]
+> TBD
+
+### D. Data Transformation
+
+**1. By Image Properties**  
+> [!CAUTION]
+> TBD
+
+**2. By Platform**  
+For demonstrating the real world effects of platform specific transformations, my analysis includes images that have been uploaded, processed, and downloaded again through a limited subset of social media platforms. 
+Duplicating these steps requires a complex setup process and a lot of patience given API rate limitations. 
+If you wish to replicate this portion of the study, the code for generating these additional test sets is provided for your convenience in `./bots` directory. 
+See [Social Media Bots](./bots/README.md) for more details.
+
 ## ✨ Acknowledgements
 
 This project was made possible by:
