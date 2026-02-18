@@ -1,0 +1,4 @@
+pillow
+atproto
+requests
+python-dotenv
