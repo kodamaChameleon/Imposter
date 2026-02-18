@@ -4,7 +4,7 @@
 
 ## 🚀 About
 
-Failure Analysis of Deepfake Image Detection In-the-Wild downloads, pre-processes, and transforms the [SFHQ-T2I](https://www.kaggle.com/datasets/selfishgene/sfhq-t2i-synthetic-faces-from-text-2-image-models) and [TPDNE](https://www.kaggle.com/datasets/almightyj/person-face-dataset-thispersondoesnotexist) for adversarial testing using the [UniversalFakeDetect](https://github.com/WisconsinAIVision/UniversalFakeDetect) and [Simple Preserved and Augmented FEatures (SAFE)](https://github.com/Ouxiang-Li/SAFE) detection methods. Real facial imagery is pulled from the [Flickr-Faces-HQ Dataset](https://www.kaggle.com/datasets/gibi13/flickr-faces-hq-dataset-ffhq). Follow  ⚙️Usage step-by-step for reproducability or implement portions as needed for your specific scenario.
+Failure Analysis of Deepfake Image Detection In-the-Wild downloads, pre-processes, and transforms the [SFHQ-T2I](https://www.kaggle.com/datasets/selfishgene/sfhq-t2i-synthetic-faces-from-text-2-image-models) and [TPDNE](https://www.kaggle.com/datasets/almightyj/person-face-dataset-thispersondoesnotexist) for adversarial testing using the [UniversalFakeDetect](https://github.com/WisconsinAIVision/UniversalFakeDetect) and [Simple Preserved and Augmented FEatures (SAFE)](https://github.com/Ouxiang-Li/SAFE) detection methods. Real facial imagery is pulled from the [Flickr-Faces-HQ Dataset](https://www.kaggle.com/datasets/gibi13/flickr-faces-hq-dataset-ffhq). Follow ⚙️Usage step-by-step for reproducability or implement portions as needed for your specific use case.
 
 ## ⚙️ Usage
 
@@ -72,6 +72,20 @@ python3 run.py --clip --clip-mode sliding
 ```
 > [!IMPORTANT]
 > This option assumes images and descriptions have been sorted using `--sort` method.
+
+**5. Split Train, Validate, and Test Set**  
+Split the sorted images into random training, validation and test sets.
+```bash
+python3 run.py --split
+```
+> [!NOTE]
+> The split option comes with a number of optional parameters:
+> - `--trainval-set` selects the dataset to use for training and validation. Best practice is to only use one (default: FLUX1_dev).
+> - `--test-set` cross dataset testing (default: FLUX1_dev FLUX1_pro FLUX1_schnell SDXL TPDNE).
+> - `--real-set` specify the dataset for real iamge sampling (default: FFHQ).
+> - `--split-ratios` defines the composition of training to validation and testing. Must sum to 1.0 (default: 0.6 0.2 0.2).
+> - `--split-csv` outputs a csv with headers split, dataset, label and filename (default: datasets/train_val_test.csv).
+> - `--split-seed` ensures reproducability during random selection of images (default: 1337).
 
 ## ✨ Acknowledgements
 
