@@ -13,6 +13,7 @@ from utils.download import fetch_all
 from utils.sort import sort_datasets
 from utils.kid import run_kid
 from utils.clip import run_clip
+from utils.split import run_split
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -65,6 +66,50 @@ def build_parser() -> argparse.ArgumentParser:
         choices=["sliding", "truncate"],
         help="CLIP scoring mode: sliding (long prompts) or truncate (standard 77 token).",
     )
+
+    # Split datasets into train/val/test
+    parser.add_argument(
+        "--split",
+        action="store_true",
+        help="Create train/val/test splits."
+    )
+    parser.add_argument(
+        "--trainval-set",
+        nargs="+",
+        default=["FLUX1_dev"],
+        help="Datasets to include in train/val splits (default: FLUX1_dev)."
+    )
+    parser.add_argument(
+        "--test-set",
+        nargs="+",
+        default=["FLUX1_dev", "FLUX1_pro", "FLUX1_schnell", "SDXL", "TPDNE"],
+        help="Datasets to include in test split (default: FLUX1_dev FLUX1_pro FLUX1_schnell SDXL TPDNE).",
+    )
+    parser.add_argument(
+        "--real-set",
+        type=str,
+        default="FFHQ",
+        help="Name of real dataset (default: FFHQ)."
+    )
+    parser.add_argument(
+        "--split-ratios",
+        nargs=3,
+        type=float,
+        default=[0.6, 0.2, 0.2],
+        help="Ratios for train/val/test splits (default: 0.6 0.2 0.2). Must sum to 1.0."
+    )
+    parser.add_argument(
+        "--split-csv",
+        type=Path,
+        default="datasets/train_val_test.csv",
+        help="Output CSV path for splits (default: datasets/train_val_test.csv).")
+    parser.add_argument(
+        "--split-seed",
+        type=int,
+        default=1337,
+        help="Random seed for splitting (default: 1337)."
+    )
+
 
     return parser
 
@@ -130,6 +175,22 @@ def main() -> int:
 
         if output:
             print("[ok] wrote:", output)
+    
+    if args.split:
+        csv_path = args.split_csv or args.root / "train_val_test.csv"
+
+        run_split(
+            root=args.root,
+            trainval_sources=args.trainval_set,
+            test_sources=args.test_set,
+            real_source=args.real_set,
+            ratios=tuple(args.split_ratios),
+            csv_path=csv_path,
+            seed=args.split_seed,
+        )
+
+        print(f"[ok] split written to {csv_path}")
+
 
     return 0
 
