@@ -1,6 +1,12 @@
-# DeepFail
+<img src="./DeepFail.png" height="500">  
 
-<img src="./banner.png" height="500">  
+![Python](https://img.shields.io/badge/Python-3.13.11-yellow.svg?logo=python)
+![TorchVision](https://img.shields.io/badge/Vision-TorchVision-7A3EFF.svg)
+![Transformers](https://img.shields.io/badge/NLP-Transformers%205.2+-F59E0B.svg?logo=huggingface)
+![CUDA](https://img.shields.io/badge/Compute-CUDA-16A34A.svg?logo=nvidia&logoColor=white)
+![Kaggle](https://img.shields.io/badge/Data-Kaggle-0284C7.svg?logo=kaggle&logoColor=white)
+![Status](https://img.shields.io/badge/🧪-Research-2563EB.svg)
+![License](https://img.shields.io/badge/License-MIT-6B7280.svg)
 
 ## 🚀 About
 
