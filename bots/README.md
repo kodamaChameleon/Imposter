@@ -33,13 +33,13 @@ nano .env
 There are three standalone python scripts which all follow the same basic pattern:
 - bskyBot.py
   - Max BATCH_SIZE: 4
-  - Default DELAY: 120
+  - Default DELAY: 180
 - mastoBot.py
   - Max BATCH_SIZE: 4
-  - Default DELAY: 240
+  - Default DELAY: 360
 - tgBot.py
   - Max BATCH_SIZE: 10
-  - Default DELAY: 60
+  - Default DELAY: 90
 
 ```
 options:
@@ -60,7 +60,7 @@ options:
 
 **Example**
 ```bash
-python3 tgBot.py --dir_path datasets/original/ --out datasets/telegram --delete --delay 90
+python3 tgBot.py --dir_path datasets/original/ --out datasets/telegram --delete --delay 100
 ```
 
 > [!TIP]

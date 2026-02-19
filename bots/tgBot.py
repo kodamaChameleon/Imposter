@@ -33,7 +33,7 @@ def parse_args():
     parser.add_argument("--chat-id", default=os.getenv("TG_CHAT_ID"))
 
     parser.add_argument("--batch-size", type=int, default=10)
-    parser.add_argument("--delay", type=int, default=10)
+    parser.add_argument("--delay", type=int, default=90)
 
     parser.add_argument("--delete", action="store_true")
 

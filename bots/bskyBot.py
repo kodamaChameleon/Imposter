@@ -61,7 +61,7 @@ def parse_args():
     parser.add_argument("--app-password", default=os.getenv("BSKY_APP_PASSWORD"), help="Your Bsky app password (defaults to env BSKY_APP_PASSWORD)")
 
     parser.add_argument("--batch-size", type=int, default=4, help=f"Number of images to post in one batch (max {MAX_BATCH})")
-    parser.add_argument("--delay", type=int, default=60, help="Seconds to wait between batches")
+    parser.add_argument("--delay", type=int, default=180, help="Seconds to wait between batches")
 
     parser.add_argument("--delete", action="store_true", help="Whether to delete the post after downloading embed images")
 
@@ -138,10 +138,32 @@ def process_batches(client: Client, images: List[Path], args):
 
         print(f"Posted: {post_uri}")
 
-        thread = client.app.bsky.feed.get_post_thread({"uri": post_uri}).model_dump()
-        embed = thread["thread"]["post"]["embed"]
+        success = False
 
-        download_images(embed["images"], batch, args.out)
+        for attempt in range(5):
+            try:
+                time.sleep(1)
+
+                thread = client.app.bsky.feed.get_post_thread(
+                    {"uri": post_uri}
+                ).model_dump()
+
+                post = thread["thread"]["post"]
+                embed = post.get("embed")
+
+                if not embed or "images" not in embed:
+                    raise ValueError("Embed not hydrated yet")
+
+                download_images(embed["images"], batch, args.out)
+
+                success = True
+                break
+
+            except Exception as e:
+                print(f"[attempt {attempt+1}/5] waiting for embed: {e}")
+
+        if not success:
+            raise RuntimeError(f"Failed to download images for post {post_uri}")
 
         if args.delete:
             rkey = extract_rkey(post_uri)

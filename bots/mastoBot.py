@@ -34,7 +34,7 @@ def parse_args():
     parser.add_argument("--token", default=os.getenv("MASTODON_ACCESS_TOKEN"))
 
     parser.add_argument("--batch-size", type=int, default=4)
-    parser.add_argument("--delay", type=int, default=90)
+    parser.add_argument("--delay", type=int, default=360)
 
     parser.add_argument("--delete", action="store_true")
 
