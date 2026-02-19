@@ -10,6 +10,10 @@ import os
 from dotenv import load_dotenv
 
 DOWNLOAD_CHOICES = ("all", "sfhq_t2i", "ffhq", "tdpne")
+TRANSFORM_CHOICES = [
+    "all", "compression", "resize",
+    "crop", "contrast", "saturation"
+]
 
 def load_env(dotenv_path: Path | None = None) -> None:
     """
