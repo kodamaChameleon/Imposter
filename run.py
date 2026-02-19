@@ -144,8 +144,8 @@ def parse_args() -> argparse.ArgumentParser:
         parser.print_help(sys.stdout)
         return 0
 
-    x_sets, x_delta = args.transform_level
-    if x_sets*x_delta > 80:
+    x_var, x_delta = args.transform_level
+    if x_var * x_delta > 80:
         raise ValueError("Transform level cannot be greater than 80% (level = sets x delta)")
     
     return args
