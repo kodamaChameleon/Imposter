@@ -131,9 +131,9 @@ def parse_args() -> argparse.ArgumentParser:
         "--transform-level",
         nargs=2,
         type=int,
-        default=[5, 10],
+        default=[6, 10],
         metavar=("VARIATIONS", "DELTA"),
-        help="Number of variations and decrement step (default: 5 10)."
+        help="Number of variations and decrement step (default: 6 10)."
     )
 
     # Validation
