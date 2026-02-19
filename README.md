@@ -95,8 +95,17 @@ python3 run.py --split
 ### D. Data Transformation
 
 **1. By Image Properties**  
-> [!CAUTION]
-> TBD
+Transform datasets by specific image properties mimicking common distribution techniques. Options include:
+- compression
+- resize
+- crop
+- contrast
+- saturation
+
+Transform options defaults to all with 6 variations and a delta of 10. Example usage:
+```bash
+python3 run.py --transform --transform-opt all --transform-level 3 5
+```
 
 **2. By Platform**  
 For demonstrating the real world effects of platform specific transformations, my analysis includes images that have been uploaded, processed, and downloaded again through a limited subset of social media platforms. 
