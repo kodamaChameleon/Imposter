@@ -8,15 +8,16 @@ import argparse
 import sys
 from pathlib import Path
 
-from utils.config import make_config, DOWNLOAD_CHOICES
+from utils.config import make_config, DOWNLOAD_CHOICES, TRANSFORM_CHOICES
 from utils.download import fetch_all
 from utils.sort import sort_datasets
 from utils.kid import run_kid
 from utils.clip import run_clip
 from utils.split import run_split
+from utils.transform import run_transform
 
 
-def build_parser() -> argparse.ArgumentParser:
+def parse_args() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="DeepFail Command-Line Utility")
 
     # Download datasets
@@ -110,19 +111,49 @@ def build_parser() -> argparse.ArgumentParser:
         help="Random seed for splitting (default: 1337)."
     )
 
+    # Transform datasets
+    parser.add_argument(
+        "--transform",
+        nargs=2,
+        metavar=("INPUT_ROOT", "OUTPUT_ROOT"),
+        help="Apply dataset transformations."
+    )
 
-    return parser
+    parser.add_argument(
+        "--transform-opt",
+        nargs="+",
+        default=["all"],
+        choices=TRANSFORM_CHOICES,
+        help="Transform options (default: all)."
+    )
 
+    parser.add_argument(
+        "--transform-level",
+        nargs=2,
+        type=int,
+        default=[6, 10],
+        metavar=("VARIATIONS", "DELTA"),
+        help="Number of variations and decrement step (default: 6 10)."
+    )
 
-def main() -> int:
-    parser = build_parser()
+    # Validation
     args = parser.parse_args()
 
     # If no args were given, show help and exit 0
     if len(sys.argv) == 1:
         parser.print_help(sys.stdout)
         return 0
+
+    x_var, x_delta = args.transform_level
+    if x_var * x_delta > 80:
+        raise ValueError("Transform level cannot be greater than 80% (level = sets x delta)")
     
+    return args
+
+
+def main() -> int:
+    args = parse_args()
+
     # Make config
     cfg, kcfg, jcfg = make_config(root=args.root)
 
@@ -176,6 +207,7 @@ def main() -> int:
         if output:
             print("[ok] wrote:", output)
     
+    # Split and transform
     if args.split:
         csv_path = args.split_csv or args.root / "train_val_test.csv"
 
@@ -191,6 +223,23 @@ def main() -> int:
 
         print(f"[ok] split written to {csv_path}")
 
+    if args.transform:
+        input_root = Path(args.transform[0])
+        output_root = Path(args.transform[1])
+
+        if "all" in args.transform_opt:
+            args.transform_opt = set(TRANSFORM_CHOICES) - {"all"}
+
+        run_transform(
+            input_root=input_root,
+            output_root=output_root,
+            jpeg_cfg=jcfg,
+            opts=args.transform_opt,
+            variations=args.transform_level[0],
+            delta=args.transform_level[1],
+        )
+
+        print("[ok] transform complete")
 
     return 0
 
