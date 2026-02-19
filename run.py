@@ -76,8 +76,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--trainval-set",
         nargs="+",
-        default=["FLUX1_dev"],
-        help="Datasets to include in train/val splits (default: FLUX1_dev)."
+        default=["TPDNE"],
+        help="Datasets to include in train/val splits (default: TPDNE)."
     )
     parser.add_argument(
         "--test-set",
