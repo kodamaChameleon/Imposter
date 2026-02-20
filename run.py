@@ -1,7 +1,7 @@
 """
 -*- coding: utf-8 -*-
 Name:        run.py
-Purpose:     Entry point for DeepFail operations.
+Purpose:     Entry point for Imposter operations.
 Author:      Kodama Chameleon <contact@kodamachameleon.com>
 """
 from utils import (

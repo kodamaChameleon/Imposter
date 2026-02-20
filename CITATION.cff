@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite this repository and the referenced works below."
-title: "DeepFail: Failure Analysis of Deepfake Image Detection In-the-Wild"
+title: "Imposter: Failure Analysis of Deepfake Image Detection In-the-Wild"
 license: MIT
 authors:
   - family-names: Kodama

@@ -1,7 +1,7 @@
 """
 -*- coding: utf-8 -*-
 Name:        utils/config.py
-Purpose:     Configuration management for DeepFail.
+Purpose:     Configuration management for Imposter.
 Author:      Kodama Chameleon <contact@kodamachameleon.com>
 """
 from dataclasses import dataclass, field

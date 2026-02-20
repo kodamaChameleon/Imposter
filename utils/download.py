@@ -1,7 +1,7 @@
 """
 -*- coding: utf-8 -*-
 Name:        utils/data.py
-Purpose:     Dataset fetching utilities for DeepFail.
+Purpose:     Dataset fetching utilities for Imposter.
 Author:      Kodama Chameleon <contact@kodamachameleon.com>
 """
 from pathlib import Path

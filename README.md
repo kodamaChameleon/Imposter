@@ -1,4 +1,4 @@
-<img src="./DeepFail.png" height="500">  
+<img src="./Imposter.png" height="500">  
 
 ![Python](https://img.shields.io/badge/Python-3.13.11-yellow.svg?logo=python)
 ![TorchVision](https://img.shields.io/badge/Vision-TorchVision-7A3EFF.svg)
@@ -19,15 +19,15 @@ Failure Analysis of Deepfake Image Detection In-the-Wild downloads, pre-processe
 **1. Clone the Repo**  
 Clone the repo using git or download and extract the zip file.
 ```bash
-git clone https://github.com/kodamaChameleon/DeepFail.git
-cd DeepFail
+git clone https://github.com/kodamaChameleon/Imposter.git
+cd Imposter
 ```
 
 **2. Environment**  
 Conda is the preferred environment for this project.
 ```bash
-conda create -n DeepFail python=3.13
-conda activate DeepFail
+conda create -n Imposter python=3.13
+conda activate Imposter
 pip install -r requirements.txt
 ```
 

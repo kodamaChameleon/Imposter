@@ -17,7 +17,7 @@ def build_parser() -> argparse.ArgumentParser:
     """
     Argument parser definitions
     """
-    parser = argparse.ArgumentParser(description="DeepFail Command-Line Utility")
+    parser = argparse.ArgumentParser(description="Imposter Command-Line Utility")
 
     # Download datasets
     parser.add_argument(
