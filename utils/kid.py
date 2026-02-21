@@ -17,12 +17,12 @@ from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 from torchvision.models import inception_v3, Inception_V3_Weights
 
-
-IMG_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".webp", ".tif", ".tiff"}
+from .config import IMG_EXTS
 
 
 @dataclass
 class KIDResult:
+    """Structured output of a KID run (JSON-serializable)."""
     dataset_a: str
     dataset_b: str
     feature_model: str
@@ -37,6 +37,9 @@ class KIDResult:
 
 
 class ImageFolderRecursive(Dataset):
+    """
+    Recursively loads all images under `root` of valid `IMG_EXTS`.
+    """
     def __init__(self, root: Path, transform: transforms.Compose):
         self.root = Path(root)
         self.transform = transform
@@ -47,6 +50,7 @@ class ImageFolderRecursive(Dataset):
 
     @staticmethod
     def _gather_files(root: Path) -> List[Path]:
+        """Return sorted list of image files under `root` (recursive)."""
         files: List[Path] = []
         for p in root.rglob("*"):
             if p.is_file() and p.suffix.lower() in IMG_EXTS:
@@ -55,9 +59,11 @@ class ImageFolderRecursive(Dataset):
         return files
 
     def __len__(self) -> int:
+        """Number of discovered image files."""
         return len(self.files)
 
     def __getitem__(self, idx: int):
+        """Load image → RGB → apply transform → return tensor."""
         path = self.files[idx]
         with Image.open(path) as im:
             im = im.convert("RGB")
@@ -70,28 +76,38 @@ class ImageFolderRecursive(Dataset):
 # ----------------------------
 
 def _imagenet_norm():
-    # Canonical ImageNet normalization (used by torchvision pretrained models)
+    """
+    Canonical ImageNet normalization
+    (used by torchvision pretrained models)
+    """
     mean = (0.485, 0.456, 0.406)
     std = (0.229, 0.224, 0.225)
     return mean, std
 
 
 def build_preprocess(feature_model: str) -> transforms.Compose:
+    """Return eval preprocessing for the given feature backbone."""
     mean, std = _imagenet_norm()
 
     if feature_model == "inception":
         # Inception-v3 expects 299x299
         return transforms.Compose([
-            transforms.Resize(342, interpolation=transforms.InterpolationMode.BILINEAR),
+            transforms.Resize(
+                342,
+                interpolation=transforms.InterpolationMode.BILINEAR
+            ),
             transforms.CenterCrop(299),
             transforms.ToTensor(),
             transforms.Normalize(mean=mean, std=std),
         ])
 
     if feature_model == "dinov2_vitb14":
-        # DINOv2 commonly uses 518 crops; 518 gives stronger alignment with typical eval usage
+        # Typically 518 gives stronger alignment with eval usage
         return transforms.Compose([
-            transforms.Resize(584, interpolation=transforms.InterpolationMode.BICUBIC),
+            transforms.Resize(
+                584,
+                interpolation=transforms.InterpolationMode.BICUBIC
+            ),
             transforms.CenterCrop(518),
             transforms.ToTensor(),
             transforms.Normalize(mean=mean, std=std),
@@ -106,7 +122,11 @@ class InceptionPool3(nn.Module):
         super().__init__()
         weights = Inception_V3_Weights.DEFAULT
         # Your torchvision requires aux_logits=True when weights are set.
-        model = inception_v3(weights=weights, aux_logits=True, transform_input=False)
+        model = inception_v3(
+            weights=weights,
+            aux_logits=True,
+            transform_input=False
+        )
         model.eval()
         self.model = model
 
@@ -151,15 +171,18 @@ class DinoV2ViTB14(nn.Module):
 
     @torch.no_grad()
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # DINOv2 models provide forward_features that returns normalized tokens.
+        # forward_features that returns normalized tokens.
         feats = self.model.forward_features(x)
         # Common key in DINOv2: 'x_norm_clstoken'
         if "x_norm_clstoken" not in feats:
-            raise RuntimeError("Unexpected DINOv2 forward_features output: missing 'x_norm_clstoken'")
+            raise RuntimeError(
+                "Unexpected DINOv2 forward_features output: missing 'x_norm_clstoken'"
+            )
         return feats["x_norm_clstoken"]  # (N, D)
 
 
 def build_feature_extractor(feature_model: str) -> nn.Module:
+    """Construct the requested feature backbone in eval mode."""
     if feature_model == "inception":
         return InceptionPool3()
     if feature_model == "dinov2_vitb14":
@@ -274,6 +297,12 @@ def compute_kid(
     n_subsets: int = 100,
     seed: int = 0,
 ) -> Tuple[float, float]:
+    """
+    Estimate KID mean/std via subset sampling.
+
+    Each subset uses `min(subset_size, len(A), len(B))` samples
+    without replacement.
+    """
     rng = np.random.default_rng(seed)
 
     na = feats_a.shape[0]
@@ -308,6 +337,15 @@ def run_kid(
     seed: int = 0,
     max_images: Optional[int] = None,
 ) -> KIDResult:
+    """
+    End-to-end KID between two image directories.
+
+    - Extracts (or loads cached) features
+    - Computes subset KID
+    - Optionally writes JSON result
+
+    Device defaults to CUDA when available.
+    """
     path_a = Path(path_a)
     path_b = Path(path_b)
 

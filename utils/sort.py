@@ -13,17 +13,7 @@ from typing import Dict, Iterable, Optional, Set, Tuple
 
 from PIL import Image, ImageOps
 
-from utils.config import JpegConfig
-
-GENERATOR_CHOICES = {
-    "FLUX1_schnell",
-    "FLUX1_pro",
-    "FLUX1_dev",
-    "SDXL",
-    "DALLE3",
-}
-
-TARGET_SIZE = (1024, 1024)
+from utils.config import JpegConfig, GENERATOR_CHOICES
 
 
 @dataclass
@@ -54,7 +44,7 @@ class SortStats:
 
 
 def _iter_images_ffhq(ffhq_root: Path) -> Iterable[Path]:
-    # Expected: datasets/FFHQ/images1024x1024/*.png
+    """Expected: datasets/FFHQ/images1024x1024/*.png"""
     base = ffhq_root / "images1024x1024"
     if not base.exists():
         return []
@@ -62,8 +52,10 @@ def _iter_images_ffhq(ffhq_root: Path) -> Iterable[Path]:
 
 
 def _iter_images_tpdne(tpdne_root: Path) -> Iterable[Path]:
-    # Expected: datasets/TPDNE/thispersondoesnotexist.10k/*.jpg
-    # We allow nested folders just in case.
+    """
+    Expected: datasets/TPDNE/thispersondoesnotexist.10k/*.jpg
+    Allow nested folders just in case.
+    """
     if not tpdne_root.exists():
         return []
     return (
@@ -74,7 +66,7 @@ def _iter_images_tpdne(tpdne_root: Path) -> Iterable[Path]:
 
 
 def _iter_images_sfhq(sfhq_root: Path) -> Iterable[Path]:
-    # Expected: datasets/SFHQ-T2I/images/images/*.jpg
+    """Expected: datasets/SFHQ-T2I/images/images/*.jpg"""
     base = sfhq_root / "images" / "images"
     if not base.exists():
         return []
@@ -86,6 +78,7 @@ def _iter_images_sfhq(sfhq_root: Path) -> Iterable[Path]:
 
 
 def _sfhq_category_from_name(path: Path) -> Optional[str]:
+    """Parse generator from `GEN_image_<number>` stem."""
     stem = path.stem  # e.g. FLUX1_pro_image_12345
 
     # Split from right: [generator, "image", number]
@@ -143,6 +136,7 @@ def _content_hash_rgb1024(img: Image.Image) -> str:
 
 
 def _open_image(path: Path) -> Optional[Image.Image]:
+    """Open image or return None on failure."""
     try:
         # Use a context manager in caller when possible; here we return a live image object.
         img = Image.open(path)
@@ -191,7 +185,7 @@ def sort_datasets(root: Path, jpeg: JpegConfig | None = None) -> SortStats:
             return
 
         try:
-            if img.size != TARGET_SIZE:
+            if img.size != jpeg.standard_size:
                 stats.invalid_resolution += 1
                 if len(stats.bad_res_examples) < 10:
                     stats.bad_res_examples.append(path)

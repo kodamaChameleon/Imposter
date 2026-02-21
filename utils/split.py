@@ -8,29 +8,18 @@ from pathlib import Path
 import random
 import shutil
 import csv
-from dataclasses import dataclass
 from typing import Iterable
 
-
-IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp"}
-
-
-@dataclass
-class SplitConfig:
-    root: Path
-    trainval_sources: list[str]
-    test_sources: list[str]
-    real_source: str
-    ratios: tuple[float, float, float]
-    csv_path: Path
-    seed: int = 1337
+from .config import IMG_EXTS, SplitConfig
 
 
 def _list_images(folder: Path) -> list[Path]:
-    return [p for p in folder.iterdir() if p.suffix.lower() in IMAGE_EXTS]
+    """Return direct children whose suffix is in `IMG_EXTS`."""
+    return [p for p in folder.iterdir() if p.suffix.lower() in IMG_EXTS]
 
 
 def _split_counts(n: int, ratios):
+    """Convert ratios into integer (train, val, test) counts."""
     train = int(n * ratios[0])
     val = int(n * ratios[1])
     test = n - train - val
@@ -38,30 +27,27 @@ def _split_counts(n: int, ratios):
 
 
 def _copy_many(files: Iterable[Path], dst: Path):
+    """Copy files into `dst`."""
     dst.mkdir(parents=True, exist_ok=True)
     for f in files:
         shutil.copy2(f, dst / f.name)
 
 
-def run_split(
-    root: Path,
-    trainval_sources: list[str],
-    test_sources: list[str],
-    real_source: str,
-    ratios: tuple[float, float, float],
-    csv_path: Path,
-    seed: int = 1337,
-):
+def run_split(cfg: SplitConfig):
+    """
+    Create train/val/test directory splits from `cfg.root/sorted`.
 
-    cfg = SplitConfig(
-        root=root,
-        trainval_sources=trainval_sources,
-        test_sources=test_sources,
-        real_source=real_source,
-        ratios=ratios,
-        csv_path=csv_path,
-        seed=seed,
-    )
+    Workflow
+    --------
+    For each fake dataset:
+    - shuffle images
+    - allocate split counts from `cfg.ratios`
+    - pair each fake with a unique real image
+    - copy into: {root}/{split}/{dataset}/{0_real|1_fake}
+
+    Real images are drawn globally without reuse across all datasets
+    and splits.
+    """
 
     random.seed(cfg.seed)
 

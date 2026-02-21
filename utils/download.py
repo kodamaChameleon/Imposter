@@ -1,7 +1,7 @@
 """
 -*- coding: utf-8 -*-
 Name:        utils/data.py
-Purpose:     Dataset fetching utilities for DeepFail (strict + reproducible).
+Purpose:     Dataset fetching utilities for Imposter.
 Author:      Kodama Chameleon <contact@kodamachameleon.com>
 """
 from pathlib import Path
@@ -13,29 +13,28 @@ from .config import DatasetConfig, KaggleConfig
 
 
 class DatasetDownloadError(RuntimeError):
-    pass
+    """Raised when Kaggle authentication or dataset download fails."""
 
 
 def _ensure_dir(path: Path) -> None:
+    """Create `path` (including parents) if it does not already exist."""
     path.mkdir(parents=True, exist_ok=True)
 
 
 def _is_nonempty_dir(path: Path) -> bool:
+    """Return True if `path` exists, is a directory, and contains ≥1 entry."""
     return path.exists() and path.is_dir() and any(path.iterdir())
 
-
-# -------------------------
-# Kaggle download helpers
-# -------------------------
 
 def _kaggle_auth(kcfg: KaggleConfig) -> KaggleApi:
     """
     Authenticate Kaggle using env vars (loaded from .env).
     Fails fast if auth fails.
     """
-    # KaggleApi reads env vars internally; we still validate config for clarity.
+    # KaggleApi reads env vars internally; validate config for clarity.
     if not kcfg.username or not kcfg.key:
-        raise DatasetDownloadError("KaggleConfig is missing username/key (should be impossible if make_config() used).")
+        raise DatasetDownloadError("KaggleConfig is missing username/key \
+            (should be impossible if make_config() used).")
 
     api = KaggleApi()
     try:
@@ -51,20 +50,20 @@ def _kaggle_auth(kcfg: KaggleConfig) -> KaggleApi:
 
 
 def download_kaggle_dataset(
-        slug: str,
-        dest_dir: Path,
-        *,
-        kcfg: KaggleConfig,
-        unzip: bool = True,
-        force: bool = False,
-    ) -> Path:
+    slug: str,
+    dest_dir: Path,
+    *,
+    kcfg: KaggleConfig,
+    unzip: bool = True,
+    force: bool = False,
+) -> Path:
     """
     Download a Kaggle dataset into dest_dir.
     Returns dest_dir.
     """
     _ensure_dir(dest_dir)
 
-    # Step-driven reproducibility: skip only if already present unless force=True.
+    # Skip only if already present unless force=True.
     if _is_nonempty_dir(dest_dir) and not force:
         return dest_dir
 
@@ -79,45 +78,57 @@ def download_kaggle_dataset(
             force=force,
         )
     except Exception as e:
-        raise DatasetDownloadError(f"Failed to download Kaggle dataset '{slug}': {e}") from e
+        raise DatasetDownloadError(
+            f"Failed to download Kaggle dataset '{slug}': {e}"
+        ) from e
 
     return dest_dir
 
 
-def fetch_sfhq_t2i(cfg: DatasetConfig, kcfg: KaggleConfig, *, force: bool = False) -> Path:
-    return download_kaggle_dataset(cfg.sfhq_t2i_slug, cfg.sfhq_t2i_dir, kcfg=kcfg, unzip=True, force=force)
+def fetch_dataset(
+    dataset_name: str,
+    cfg: DatasetConfig,
+    kcfg: KaggleConfig,
+    *,
+    force: bool = False
+) -> Path:
+    """
+    Generic downloader for a Kaggle dataset defined in DatasetConfig.
 
+    dataset_name: 'sfhq_t2i', 'tpdne', or 'ffhq'
+    """
+    try:
+        slug = getattr(cfg, f"{dataset_name}_slug")
+        dest_dir = getattr(cfg, f"{dataset_name}_dir")
+    except AttributeError as e:
+        raise ValueError(
+            f"DatasetConfig has no dataset named '{dataset_name}'"
+        ) from e
 
-def fetch_tpdne(cfg: DatasetConfig, kcfg: KaggleConfig, *, force: bool = False) -> Path:
-    return download_kaggle_dataset(cfg.tpdne_slug, cfg.tpdne_dir, kcfg=kcfg, unzip=True, force=force)
+    return download_kaggle_dataset(
+        slug,
+        dest_dir,
+        kcfg=kcfg,
+        unzip=True,
+        force=force
+    )
 
-
-def fetch_ffhq(cfg: DatasetConfig, kcfg: KaggleConfig, *, force: bool = False) -> Path:
-    return download_kaggle_dataset(cfg.ffhq_slug, cfg.ffhq_dir, kcfg=kcfg, unzip=True, force=force)
-
-
-# -------------------------
-# Convenience
-# -------------------------
 
 def fetch_all(
-        cfg: DatasetConfig,
-        kcfg: KaggleConfig,
-        *,
-        force: bool = False,
-        include: Iterable[str] = ("sfhq_t2i", "tpdne", "ffhq"),
-    ) -> dict[str, Path]:
+    cfg: DatasetConfig,
+    kcfg: KaggleConfig,
+    *,
+    force: bool = False,
+    include: Iterable[str] = ("sfhq_t2i", "tpdne", "ffhq"),
+) -> dict[str, Path]:
     """
-    Pull all datasets
+    Download multiple datasets.
+
+    Parameters
+    ----------
+    include : Iterable[str] | Dataset names to fetch.
     """
     results: dict[str, Path] = {}
-    include_set = set(include)
-
-    if "sfhq_t2i" in include_set:
-        results["sfhq_t2i"] = fetch_sfhq_t2i(cfg, kcfg, force=force)
-    if "tpdne" in include_set:
-        results["tpdne"] = fetch_tpdne(cfg, kcfg, force=force)
-    if "ffhq" in include_set:
-        results["ffhq"] = fetch_ffhq(cfg, kcfg, force=force)
-
+    for name in include:
+        results[name] = fetch_dataset(name, cfg, kcfg, force=force)
     return results

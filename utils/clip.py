@@ -4,6 +4,7 @@ Name:        utils/config.py
 Purpose:     CLIP score computation for SFHQ-T2I.
 Author:      Kodama Chameleon <contact@kodamachameleon.com>
 """
+
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -15,19 +16,26 @@ from PIL import Image
 from tqdm import tqdm
 from transformers import CLIPModel, CLIPProcessor
 
+from .config import CLIP_MODEL
 
 # -----------------------------
 # Result container
 # -----------------------------
 
+
 @dataclass
 class CLIPResult:
+    """
+    Container for aggregated CLIP scoring results.
+    """
+
     dataset: Path
     num_images: int
     global_mean: float
     per_model: dict[str, float]
 
     def to_json(self):
+        """Serialize the result to a JSON-compatible dictionary."""
         return {
             "dataset": str(self.dataset),
             "num_images": self.num_images,
@@ -40,7 +48,14 @@ class CLIPResult:
 # Helpers
 # -----------------------------
 
-def chunk_prompt(tokenizer, text: str, max_len: int = 77, stride: int = 50) -> List[torch.Tensor]:
+
+def chunk_prompt(
+    tokenizer, text: str, max_len: int = 77, stride: int = 50
+) -> List[torch.Tensor]:
+    """
+    Tokenize a prompt into overlapping windows compatible with CLIP's
+    maximum context length.
+    """
     tokens = tokenizer(
         text,
         return_tensors="pt",
@@ -73,6 +88,9 @@ def chunk_prompt(tokenizer, text: str, max_len: int = 77, stride: int = 50) -> L
 
 
 def load_clip(model_name: str, device: str, use_fp16: bool):
+    """
+    Load a pretrained CLIP model and its processor.
+    """
     model = CLIPModel.from_pretrained(model_name).to(device)
     processor = CLIPProcessor.from_pretrained(model_name)
     model.eval()
@@ -84,6 +102,10 @@ def load_clip(model_name: str, device: str, use_fp16: bool):
 
 
 def build_text_inputs_sliding(tokenizer, prompts, device):
+    """
+    Construct padded token batches for long prompts
+    using sliding-window chunking.
+    """
     text_chunks = []
     chunk_map = []
 
@@ -103,6 +125,9 @@ def build_text_inputs_sliding(tokenizer, prompts, device):
 
 
 def build_text_inputs_truncate(processor, prompts, device):
+    """
+    Tokenize prompts using standard CLIP truncation.
+    """
     return processor(
         text=prompts,
         return_tensors="pt",
@@ -113,8 +138,10 @@ def build_text_inputs_truncate(processor, prompts, device):
 
 
 def encode_batch(model, image_inputs, text_inputs):
+    """
+    Compute normalized CLIP embeddings and their cosine similarity matrix
+    """
     with torch.inference_mode():
-
         outputs = model(
             pixel_values=image_inputs["pixel_values"],
             input_ids=text_inputs["input_ids"],
@@ -133,8 +160,12 @@ def encode_batch(model, image_inputs, text_inputs):
 
 
 def aggregate_sliding(sims, chunk_map, model_names, scores, per_model):
+    """
+    Aggregate sliding-window similarities into a single score per image.
+    For each image, the maximum similarity across all its prompt chunks
+    is selected.
+    """
     for img_idx in range(len(model_names)):
-
         idxs = [i for i, m in enumerate(chunk_map) if m == img_idx]
 
         if not idxs:
@@ -147,6 +178,10 @@ def aggregate_sliding(sims, chunk_map, model_names, scores, per_model):
 
 
 def aggregate_truncate(sims, model_names, scores, per_model):
+    """
+    Aggregate similarities when using truncated prompts.
+    Assumes one text per image and uses the diagonal of the similarity matrix.
+    """
     for i, score in enumerate(sims.diag()):
         val = score.item()
         scores.append(val)
@@ -157,16 +192,30 @@ def aggregate_truncate(sims, model_names, scores, per_model):
 # Core
 # -----------------------------
 
+
 def run_clip(
     root: Path,
     csv_path: Path | None = None,
     output: Path | None = None,
-    model_name: str = "openai/clip-vit-large-patch14",
+    model_name: str = CLIP_MODEL,
     device: str | None = None,
     batch_size: int = 32,
     clip_mode: str = "sliding",
 ) -> CLIPResult:
-    
+    """
+    Compute CLIP image–text similarity scores for a generated image dataset.
+
+    Parameters
+    ----------
+    root : Path | `root / sorted / <model_name> / <image_file>`.
+    csv_path : Path, optional
+    output : Path, optional | If provided, writes the aggregated result as JSON.
+    model_name : str | Hugging Face CLIP model identifier.
+    device : str, optional | Target device. Auto-selects CUDA if available.
+    batch_size : int, default=32 | Number of samples processed per forward pass.
+    clip_mode : {"sliding", "truncate"}
+    """
+
     if clip_mode not in {"sliding", "truncate"}:
         raise ValueError(f"Invalid clip_mode: {clip_mode}")
 
@@ -187,8 +236,7 @@ def run_clip(
     rows = list(df.itertuples())
 
     for start in tqdm(range(0, len(rows), batch_size)):
-
-        batch = rows[start:start + batch_size]
+        batch = rows[start : start + batch_size]
 
         images, prompts, model_names = [], [], []
 
@@ -208,10 +256,14 @@ def run_clip(
         if not images:
             continue
 
-        image_inputs = processor(images=images, return_tensors="pt").to(device, non_blocking=True)
+        image_inputs = processor(images=images, return_tensors="pt").to(
+            device, non_blocking=True
+        )
 
         if clip_mode == "sliding":
-            text_inputs, chunk_map = build_text_inputs_sliding(tokenizer, prompts, device)
+            text_inputs, chunk_map = build_text_inputs_sliding(
+                tokenizer, prompts, device
+            )
         elif clip_mode == "truncate":
             text_inputs = build_text_inputs_truncate(processor, prompts, device)
 
@@ -222,9 +274,7 @@ def run_clip(
         elif clip_mode == "truncate":
             aggregate_truncate(sims, model_names, scores, per_model)
 
-    per_model_mean = {
-        m: float(torch.tensor(v).mean()) for m, v in per_model.items()
-    }
+    per_model_mean = {m: float(torch.tensor(v).mean()) for m, v in per_model.items()}
 
     result = CLIPResult(
         dataset=root,
