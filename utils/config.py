@@ -10,6 +10,20 @@ import os
 from dotenv import load_dotenv
 
 
+CLIP_MODEL = "openai/clip-vit-large-patch14"
+IMG_EXTS = {
+    ".jpg", ".jpeg", ".png",
+    ".bmp", ".webp", ".tif", ".tiff"
+}
+GENERATOR_CHOICES = {
+    "FLUX1_schnell",
+    "FLUX1_pro",
+    "FLUX1_dev",
+    "SDXL",
+    "DALLE3",
+}
+
+
 def load_env(dotenv_path: Path | None = None) -> None:
     """
     Load environment variables from .env if python-dotenv is installed.
@@ -23,7 +37,11 @@ def load_env(dotenv_path: Path | None = None) -> None:
 # Env helpers
 # -------------------------
 
+
 def _env_int(name: str, default: int) -> int:
+    """
+    Return `int(os.getenv(name))` or `default` if unset/invalid.
+    """
     val = os.getenv(name)
     if val is None:
         return default
@@ -34,6 +52,9 @@ def _env_int(name: str, default: int) -> int:
 
 
 def _env_bool(name: str, default: bool) -> bool:
+    """
+    Return a boolean from env using {1,true,yes,on} → True.
+    """
     val = os.getenv(name)
     if val is None:
         return default
@@ -43,16 +64,20 @@ def _env_bool(name: str, default: bool) -> bool:
 @dataclass(frozen=True)
 class DefaultOptions:
     """
-    Define default options for argument parsing
+    Immutable baseline values and valid choice sets for CLI arguments.
     """
     root: Path = Path("datasets")
-    download_choices: tuple[str, ...] = ("all", "sfhq_t2i", "ffhq", "tdpne")
+    download_choices: tuple[str, ...] = ("all", "sfhq_t2i", "ffhq", "tpdne")
 
     feature_model: str = "inception"
-    feature_choices: list[str] = field(default_factory=lambda: ["inception", "dinov2_vitb14"])
+    feature_choices: list[str] = field(
+        default_factory=lambda: ["inception", "dinov2_vitb14"]
+    )
 
     clip_mode: str = "sliding"
-    clip_choices: list[str] = field(default_factory=lambda: ["sliding", "truncate"])
+    clip_choices: list[str] = field(
+        default_factory=lambda: ["sliding", "truncate"]
+    )
 
     trainval_set: list[str] = field(default_factory=lambda: ["FLUX1_dev"])
 
@@ -75,11 +100,12 @@ class DefaultOptions:
 
     transform_level: list[int] = field(default_factory=lambda: [6, 10])
 
+
 @dataclass(frozen=True)
 class KaggleConfig:
     """
-    Kaggle expects KAGGLE_USERNAME and KAGGLE_KEY in env, or ~/.kaggle/kaggle.json.
-    Prefered .env for local dev/CI.
+    Kaggle expects KAGGLE_USERNAME and KAGGLE_KEY in env,
+    or ~/.kaggle/kaggle.json. Prefered .env for local dev/CI.
     """
     username: str | None = os.getenv("KAGGLE_USERNAME")
     key: str | None = os.getenv("KAGGLE_API_TOKEN")
@@ -88,7 +114,7 @@ class KaggleConfig:
 @dataclass(frozen=True)
 class DatasetConfig:
     """
-    Dataset configs for downloading
+    Dataset root and derived local paths plus Kaggle slugs.
     """
     root: Path
 
@@ -104,43 +130,45 @@ class DatasetConfig:
 
     @property
     def sfhq_t2i_dir(self) -> Path:
-        """
-        Local directory for SFHQ-T2I dataset
-        """
         return self.root / self.sfhq_t2i_dirname
 
     @property
     def tpdne_dir(self) -> Path:
-        """
-        Local directory for This Person Does Not Exist dataset
-        """
         return self.root / self.tpdne_dirname
 
     @property
     def ffhq_dir(self) -> Path:
-        """
-        Local directory for FFHQ dataset
-        """
         return self.root / self.ffhq_dirname
 
     @property
     def ffhq_repo_dir(self) -> Path:
-        """
-        Where we clone NVLabs/ffhq-dataset to run download_ffhq.py (kept under ffhq_dir).
-        """
         return self.ffhq_dir / "_ffhq-dataset-repo"
 
 
 @dataclass(frozen=True)
 class JpegConfig:
     """
-    JPEG encoding settings used to standardize ALL images through the same lossy pipeline.
+    JPEG encoding settings used to standardize ALL images
+    through the same lossy pipeline.
     """
-    quality = _env_int("JPEG_QUALITY", 95)               # Pillow quality
-    subsampling = _env_int("JPEG_SUBSAMPLING", 0)        # 4:4:4 (no chroma subsampling)
-    optimize = _env_bool("JPEG_OPTIMIZE", True)          # slower encode, smaller file
-    progressive = _env_bool("JPEG_PROGRESSIVE", False)   # baseline JPEG for consistency/simplicity
+    quality: int = _env_int("JPEG_QUALITY", 95)
+    subsampling: int = _env_int("JPEG_SUBSAMPLING", 0)
+    optimize: bool = _env_bool("JPEG_OPTIMIZE", True)
+    progressive: bool = _env_bool("JPEG_PROGRESSIVE", False)
+    standard_size: tuple[int, int] = (1024, 1024)
 
+@dataclass
+class SplitConfig:
+    """
+    Immutable runtime parameters for split generation.
+    """
+    root: Path
+    trainval_sources: list[str]
+    test_sources: list[str]
+    real_source: str
+    ratios: tuple[float, float, float]
+    csv_path: Path
+    seed: int = 1337
 
 @dataclass(frozen=True)
 class AppConfig:
@@ -153,11 +181,11 @@ class AppConfig:
 
 
 def make_config(
-        root: Path | str = "datasets",
-        dotenv_path: Path | None = None,
-    ) -> AppConfig:
+    root: Path | str = "datasets",
+    dotenv_path: Path | None = None,
+) -> AppConfig:
     """
-    Compile/Initialize Configs
+    Build the canonical config.
     """
     load_env(dotenv_path)
 

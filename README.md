@@ -37,10 +37,13 @@ cp .env_example .env
 ```
 
 ### B. Data Processing
+
+Use the standard `--help` arguement in to show available options in the CLI.
+
 **1. Download**  
 Download the required datasets.
 ```bash
-python3 run.py --download
+python3 run.py --download all
 ```
 > [!CAUTION]
 > Make sure you have **plenty** of disk space before running this command. These are **big** datasets.  

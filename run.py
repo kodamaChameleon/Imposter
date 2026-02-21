@@ -6,6 +6,7 @@ Author:      Kodama Chameleon <contact@kodamachameleon.com>
 """
 from utils import (
     make_config,
+    SplitConfig,
     fetch_all,
     sort_datasets,
     run_kid,
@@ -64,19 +65,19 @@ def main() -> int:
             print("[ok] wrote:", args.clip)
 
     if args.split:
-        csv_path = args.split_csv or args.root / "train_val_test.csv"
-
-        run_split(
+        split_cfg = SplitConfig(
             root=args.root,
             trainval_sources=args.trainval_set,
             test_sources=args.test_set,
             real_source=args.real_set,
             ratios=tuple(args.split_ratios),
-            csv_path=csv_path,
+            csv_path=args.split_csv or args.root / "train_val_test.csv",
             seed=args.split_seed,
         )
 
-        print(f"[ok] split written to {csv_path}")
+        run_split(split_cfg)
+
+        print(f"[ok] split written to {split_cfg.csv_path}")
 
     if args.transform:
         input_root, output_root = args.transform

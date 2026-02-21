@@ -17,7 +17,9 @@ def build_parser() -> argparse.ArgumentParser:
     """
     Argument parser definitions
     """
-    parser = argparse.ArgumentParser(description="Imposter Command-Line Utility")
+    parser = argparse.ArgumentParser(
+        description="Imposter Command-Line Utility"
+    )
 
     # Download datasets
     parser.add_argument(
@@ -99,7 +101,7 @@ def build_parser() -> argparse.ArgumentParser:
         type=float,
         default=DEFAULTS.split_ratios,
         help=f"Ratios for train/val/test splits \
-            (default: {' '.join(map(str,DEFAULTS.split_ratios))}). Must sum to 1.0."
+            (default: {' '.join(map(str, DEFAULTS.split_ratios))}). Must sum to 1.0."
     )
     parser.add_argument(
         "--split-csv",
@@ -136,10 +138,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=DEFAULTS.transform_level,
         metavar=("VARIATIONS", "DELTA"),
         help=f"Number of variations and decrement step \
-            (default: {' '.join(map(str,DEFAULTS.transform_level))})."
+            (default: {' '.join(map(str, DEFAULTS.transform_level))})."
     )
 
     return parser
+
 
 def validate_args(args: argparse.Namespace) -> argparse.Namespace:
     """
@@ -199,6 +202,7 @@ def validate_args(args: argparse.Namespace) -> argparse.Namespace:
             args.clip = None
 
     return args
+
 
 def parse_args(argv=None) -> argparse.Namespace | int:
     """

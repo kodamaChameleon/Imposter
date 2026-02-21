@@ -11,15 +11,23 @@ import numpy as np
 from PIL import Image
 from tqdm import tqdm
 
+from .config import IMG_EXTS
+
 
 def _iter_images(root: Path) -> Iterable[Path]:
-    exts = {".jpg", ".jpeg", ".png", ".webp"}
+    """Yield image paths under `root` whose suffix is in `IMG_EXTS`."""
     for p in root.rglob("*"):
-        if p.suffix.lower() in exts:
+        if p.suffix.lower() in IMG_EXTS:
             yield p
 
 
-def _save_jpeg(img: Image.Image, out_path: Path, quality: int, jpeg_cfg):
+def _save_jpeg(
+    img: Image.Image,
+    out_path: Path,
+    quality: int,
+    jpeg_cfg
+):
+    """Save image as JPEG to `out_path`."""
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     img = img.convert("RGB")
@@ -34,6 +42,10 @@ def _save_jpeg(img: Image.Image, out_path: Path, quality: int, jpeg_cfg):
 
 
 def _symmetric_levels(variations: int, delta: int) -> list[int]:
+    """
+    Return sorted percentage levels symetric around 100
+    where 100 represents original image state.
+    """
     levels = []
     for i in range(1, variations + 1):
         down = 100 - i * delta
@@ -48,6 +60,7 @@ def _symmetric_levels(variations: int, delta: int) -> list[int]:
 
 
 def _apply_contrast(img: Image.Image, factor: float) -> Image.Image:
+    """Apply linear contrast in normalized RGB space."""
     arr = np.asarray(img).astype(np.float32) / 255.0
     arr = (arr - 0.5) * factor + 0.5
     arr = np.clip(arr, 0, 1)
@@ -55,6 +68,7 @@ def _apply_contrast(img: Image.Image, factor: float) -> Image.Image:
 
 
 def _apply_saturation(img: Image.Image, factor: float) -> Image.Image:
+    """Scale color distance from luminance (Rec. 709)."""
     arr = np.asarray(img).astype(np.float32) / 255.0
 
     # perceptual luminance (Rec. 709)
@@ -67,11 +81,15 @@ def _apply_saturation(img: Image.Image, factor: float) -> Image.Image:
     arr = lum + factor * (arr - lum)
     arr = np.clip(arr, 0, 1)
 
-    return Image.fromarray((arr * 255).astype(np.uint8)
-)
+    return Image.fromarray((arr * 255).astype(np.uint8))
 
 
-def _compression_levels(base_quality: int, variations: int, delta: int) -> list[int]:
+def _compression_levels(
+    base_quality: int,
+    variations: int,
+    delta: int
+) -> list[int]:
+    """Generate decreasing JPEG quality levels from `base_quality`."""
     levels = []
     for i in range(variations):
         q = base_quality - (i + 1) * delta
@@ -90,6 +108,9 @@ def _run_compression(
     variations: int,
     delta: int,
 ):
+    """
+    Re-encode images at lower JPEG quality levels.
+    """
     levels = _compression_levels(jpeg_cfg.quality, variations, delta)
 
     for q in levels:
@@ -115,6 +136,9 @@ def _run_resize(
     delta: int,
     jpeg_cfg,
 ):
+    """
+    Downscale images by percentage levels and re-encode as JPEG.
+    """
     levels = [100 - (i + 1) * delta for i in range(variations) if 100 - (i + 1) * delta > 0]
 
     for scale in levels:
@@ -149,6 +173,9 @@ def _run_crop(
     delta: int,
     jpeg_cfg,
 ):
+    """
+    Center-crop images by percentage and re-encode as JPEG.
+    """
     levels = [(i + 1) * delta for i in range(variations) if (i + 1) * delta < 100]
 
     for crop_pct in levels:
@@ -188,6 +215,9 @@ def _run_contrast(
     delta: int,
     jpeg_cfg,
 ):
+    """
+    Apply symmetric contrast variations and re-encode as JPEG.
+    """
     levels = _symmetric_levels(variations, delta)
 
     for level in levels:
@@ -216,6 +246,9 @@ def _run_saturation(
     delta: int,
     jpeg_cfg,
 ):
+    """
+    Apply symmetric saturation variations and re-encode as JPEG.
+    """
     levels = _symmetric_levels(variations, delta)
 
     for level in levels:
@@ -243,6 +276,18 @@ def run_transform(
     variations: int,
     delta: int,
 ):
+    """
+    Execute selected dataset transformations.
+
+    Parameters
+    ----------
+    input_root: Source dataset directory.
+    output_root: Destination root for transformed datasets.
+    jpeg_cfg: JPEG encoding configuration.
+    opts: Iterable of transform names
+    variations: Number of levels per transform.
+    delta: Step size between levels (percentage).
+    """
     input_root = input_root.resolve()
     output_root = output_root.resolve()
     dataset_name = input_root.name
