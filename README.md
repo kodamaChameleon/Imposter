@@ -95,8 +95,62 @@ python3 run.py --split
 
 ### C. Training
 
-> [!CAUTION]
-> TBD
+**UniversalFakeDetect**
+
+Use the original [UniversalFakeDetect](https://github.com/WisconsinAIVision/UniversalFakeDetect) to train the model. 
+Copy the train and val datasets from Imposter into a new folder in the UniversalFakeDetect datasets. 
+Your dataset structure should look something like:
+```
+datasets
+├── train
+│   ├── FLUX1_dev
+│   │   ├── 0_real
+│   │   └── 1_fake
+│   └── TPDNE
+│       ├── 0_real
+│       └── 1_fake
+└── val
+    ├── FLUX1_dev
+    │   ├── 0_real
+    │   └── 1_fake
+    └── TPDNE
+        ├── 0_real
+        └── 1_fake
+```
+
+> [!NOTE]
+> The original UniversalFakeDetect repo has missing dependencies and several additional configuration steps to customize for our use case.
+> For your convenience, I have included a [UniversalFakeDetect Fork](https://github.com/kodamaChameleon/UniversalFakeDetect) with a number of the changes already made.
+> Be sure to update the hardcoded paths in `data/datasets.py` and `dataset_paths.py`.
+
+**SAFE**
+
+Use [SAFE](https://github.com/Ouxiang-Li/SAFE) to train the model. 
+Copy the train and val datasets from Imposter into a new folder in the SAFE datasets. 
+Your dataset structure should look something like:
+```
+data
+├── datasets
+│   └── train_DeepFail
+│       ├── train
+│       │   ├── FLUX1_dev
+│       │   │   ├── 0_real
+│       │   │   └── 1_fake
+│       │   └── TPDNE
+│       │       ├── 0_real
+│       │       └── 1_fake
+│       └── val
+│           ├── FLUX1_dev
+│           │   ├── 0_real
+│           │   └── 1_fake
+│           └── TPDNE
+│               ├── 0_real
+│               └── 1_fake
+```
+
+> [!NOTE]
+> Be sure to update the `train_datasets` and `eval_datasets` variables in `scripts/train.sh` before running if using the original repo.
+> I have provided [SAFE Fork](https://github.com/kodamaChameleon/SAFE) for convenience.
 
 ### D. Data Transformation
 
