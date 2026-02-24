@@ -158,7 +158,8 @@ data
 ### D. Data Transformation
 
 **1. By Image Properties**  
-Transform datasets by specific image properties mimicking common distribution techniques. Options include:
+Transform datasets by specific image properties mimicking common distribution techniques. 
+Outputs a csv report including average LPIPS scores across a given transformation set. Options include:
 - compression
 - resize
 - crop
