@@ -130,7 +130,6 @@ def build_parser() -> argparse.ArgumentParser:
         choices=DEFAULTS.transform_choices,
         help=f"Transform options (default: {' '.join(DEFAULTS.transform_opt)})."
     )
-
     parser.add_argument(
         "--transform-level",
         nargs=2,
@@ -139,6 +138,12 @@ def build_parser() -> argparse.ArgumentParser:
         metavar=("VARIATIONS", "DELTA"),
         help=f"Number of variations and decrement step \
             (default: {' '.join(map(str, DEFAULTS.transform_level))})."
+    )
+    parser.add_argument(
+    "--transform-report",
+        default=DEFAULTS.transform_csv,
+        help=f"CSV file to store average LPIPS scores per transform level \
+            (default: {DEFAULTS.transform_csv})."
     )
 
     return parser

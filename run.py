@@ -89,6 +89,7 @@ def main() -> int:
             opts=args.transform_opt,
             variations=args.transform_level[0],
             delta=args.transform_level[1],
+            report_path=args.transform_report,
         )
 
         print("[ok] transform complete")
