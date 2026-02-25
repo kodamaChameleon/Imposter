@@ -36,6 +36,9 @@ Copy .env_example to .env and update required variables.
 cp .env_example .env
 ```
 
+> [!NOTE]
+> Additional configs may be found in utils/config.py.
+
 ### B. Data Processing
 
 Use the standard `--help` arguement in to show available options in the CLI.
@@ -83,7 +86,8 @@ python3 run.py --clip --clip-mode sliding
 > This option assumes images and descriptions have been sorted using `--sort` method.
 
 **5. Split Train, Validate, and Test Set**  
-Split the sorted images into random training, validation and test sets.
+Split the sorted images into random training, validation and test sets. 
+Test sets have a default cap of 5K images (10K fake & real combined) to reduce combinatorial explosion during tranformation.
 ```bash
 python3 run.py --split
 ```
