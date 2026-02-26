@@ -124,6 +124,20 @@ datasets
         ├── 0_real
         └── 1_fake
 ```
+> [!TIP]
+> Dataset paths must be added to dataset_paths.py for UFD.
+> Use the commmand below for a quick shortcut to generating the correct format.
+
+```bash
+ls -1 /path/to/test/ | awk '{
+  printf "dict(\n"
+  printf "    real_path='\''/path/to/test/%s'\'',\n", $0
+  printf "    fake_path='\''/path/to/test/%s'\'',\n", $0
+  printf "    data_mode='\''wang2020'\'',\n"
+  printf "    key='\''%s'\''\n", $0
+  printf "),\n"
+}' > formatted_test_paths.txt
+```
 
 > [!NOTE]
 > The original UniversalFakeDetect repo has missing dependencies and several additional configuration steps to customize for our use case.
