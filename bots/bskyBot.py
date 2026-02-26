@@ -61,7 +61,7 @@ def parse_args():
     parser.add_argument("--app-password", default=os.getenv("BSKY_APP_PASSWORD"), help="Your Bsky app password (defaults to env BSKY_APP_PASSWORD)")
 
     parser.add_argument("--batch-size", type=int, default=4, help=f"Number of images to post in one batch (max {MAX_BATCH})")
-    parser.add_argument("--delay", type=int, default=180, help="Seconds to wait between batches")
+    parser.add_argument("--delay", type=int, default=240, help="Seconds to wait between batches")
 
     parser.add_argument("--delete", action="store_true", help="Whether to delete the post after downloading embed images")
 

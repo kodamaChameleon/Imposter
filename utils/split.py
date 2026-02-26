@@ -116,7 +116,7 @@ def run_split(cfg: SplitConfig):
         process_dataset(
             ds,
             {
-                "test": test_n,
+                "test": min(test_n, cfg.test_cap),
             },
         )
 

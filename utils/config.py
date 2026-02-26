@@ -170,6 +170,7 @@ class SplitConfig:
     ratios: tuple[float, float, float]
     csv_path: Path
     seed: int = 1337
+    test_cap: int | None = 5000
 
 @dataclass(frozen=True)
 class AppConfig:

@@ -36,6 +36,9 @@ Copy .env_example to .env and update required variables.
 cp .env_example .env
 ```
 
+> [!NOTE]
+> Additional configs may be found in utils/config.py.
+
 ### B. Data Processing
 
 Use the standard `--help` arguement in to show available options in the CLI.
@@ -83,7 +86,8 @@ python3 run.py --clip --clip-mode sliding
 > This option assumes images and descriptions have been sorted using `--sort` method.
 
 **5. Split Train, Validate, and Test Set**  
-Split the sorted images into random training, validation and test sets.
+Split the sorted images into random training, validation and test sets. 
+Test sets have a default cap of 5K images (10K fake & real combined) to reduce combinatorial explosion during tranformation.
 ```bash
 python3 run.py --split
 ```
@@ -119,6 +123,20 @@ datasets
     └── TPDNE
         ├── 0_real
         └── 1_fake
+```
+> [!TIP]
+> Dataset paths must be added to dataset_paths.py for UFD.
+> Use the commmand below for a quick shortcut to generating the correct format.
+
+```bash
+ls -1 /path/to/test/ | awk '{
+  printf "dict(\n"
+  printf "    real_path='\''/path/to/test/%s'\'',\n", $0
+  printf "    fake_path='\''/path/to/test/%s'\'',\n", $0
+  printf "    data_mode='\''wang2020'\'',\n"
+  printf "    key='\''%s'\''\n", $0
+  printf "),\n"
+}' > formatted_test_paths.txt
 ```
 
 > [!NOTE]
