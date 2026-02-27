@@ -73,6 +73,7 @@ class DefaultOptions:
     feature_choices: list[str] = field(
         default_factory=lambda: ["inception", "dinov2_vitb14"]
     )
+    kid_csv: Path = root / "KID_scores.csv"
 
     clip_mode: str = "sliding"
     clip_choices: list[str] = field(

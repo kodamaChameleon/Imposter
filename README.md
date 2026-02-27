@@ -72,7 +72,8 @@ python3 run.py --kid datasets/sorted/FFHQ datasets/sorted/DALLE3
 ```
 > [!NOTE]
 > Optional:
-> - Input an output json file: `--kid datasets/sorted/FFHQ datasets/sorted/DALLE3 dalle3_kid.json`
+> - Format is `--kid <real> <fakeA> <fakeB>...`
+> - Choose an alternative output location with `--kid-results`
 > - Specify a feature extraction model (default is inception with standard ImageNet weights applied): `--feature-model dinov2_vitb14`
 
 **4. CLIP score**  

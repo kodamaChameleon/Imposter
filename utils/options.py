@@ -45,7 +45,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--kid",
         nargs="+",
         metavar="PATH",
-        help="Compute KID between two datasets. Usage: --kid <pathA> <pathB> [output.json]",
+        help="Compute KID: --kid <pathA> <pathB> <pathC> ..."
+    )
+    parser.add_argument(
+        "--kid-results",
+        type=Path,
+        default=DEFAULTS.kid_csv,
+        help="CSV file to store KID results (append mode).",
     )
     parser.add_argument(
         "--feature-model",
@@ -175,15 +181,14 @@ def validate_args(args: argparse.Namespace) -> argparse.Namespace:
 
     # KID validation + coercion
     if args.kid:
-        if len(args.kid) not in (2, 3):
+        if len(args.kid) < 2:
             raise ValueError(
-                "--kid expects 2 or 3 args: <pathA> <pathB> [output.json]"
+                "--kid expects: <pathA> <pathB> <pathC> ..."
             )
 
         args.kid = {
             "path_a": Path(args.kid[0]),
-            "path_b": Path(args.kid[1]),
-            "output": Path(args.kid[2]) if len(args.kid) == 3 else None,
+            "path_bs": [Path(p) for p in args.kid[1:]],
         }
 
     # Transform
@@ -205,6 +210,8 @@ def validate_args(args: argparse.Namespace) -> argparse.Namespace:
             args.clip = Path(args.clip)
         else:
             args.clip = None
+    
+    
 
     return args
 

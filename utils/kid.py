@@ -4,7 +4,7 @@ Name:        utils/kid.py
 Purpose:     Measure KID distance between two datasets
 Author:      Kodama Chameleon <contact@kodamachameleon.com>
 """
-import json
+import csv
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import List, Optional, Tuple
@@ -22,7 +22,7 @@ from .config import IMG_EXTS
 
 @dataclass
 class KIDResult:
-    """Structured output of a KID run (JSON-serializable)."""
+    """Structured output of a KID run."""
     dataset_a: str
     dataset_b: str
     feature_model: str
@@ -34,6 +34,45 @@ class KIDResult:
     kid_mean: float
     kid_std: float
     seed: int
+
+
+# ----------------------------
+# CSV writing
+# ----------------------------
+
+CSV_FIELDS = [
+    "dataset_a",
+    "dataset_b",
+    "feature_model",
+    "num_images_a",
+    "num_images_b",
+    "feature_dim",
+    "subset_size",
+    "n_subsets",
+    "kid_mean",
+    "kid_std",
+    "seed",
+]
+
+
+def append_kid_csv(results: List[KIDResult], csv_path: Path) -> None:
+    """
+    Append one or more KIDResult rows to a CSV.
+    Creates file with header if it doesn't exist.
+    """
+    csv_path = Path(csv_path)
+    csv_path.parent.mkdir(parents=True, exist_ok=True)
+
+    file_exists = csv_path.exists()
+
+    with csv_path.open("a", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=CSV_FIELDS)
+
+        if not file_exists:
+            writer.writeheader()
+
+        for r in results:
+            writer.writerow(asdict(r))
 
 
 class ImageFolderRecursive(Dataset):
@@ -326,8 +365,8 @@ def compute_kid(
 
 def run_kid(
     path_a: Path,
-    path_b: Path,
-    output: Optional[Path] = None,
+    path_b: Path | List[Path],
+    csv_path: Optional[Path] = None,
     feature_model: str = "inception",
     device: Optional[str] = None,
     batch_size: int = 32,
@@ -336,22 +375,27 @@ def run_kid(
     n_subsets: int = 100,
     seed: int = 0,
     max_images: Optional[int] = None,
-) -> KIDResult:
+) -> List[KIDResult]:
     """
-    End-to-end KID between two image directories.
+    Compute KID for A vs one or many B datasets.
 
-    - Extracts (or loads cached) features
-    - Computes subset KID
-    - Optionally writes JSON result
-
-    Device defaults to CUDA when available.
+    - Accepts a single path or list for path_b
+    - Appends results to CSV if csv_path is provided
+    - Returns list of KIDResult
     """
+
     path_a = Path(path_a)
-    path_b = Path(path_b)
+
+    # Normalize B → list
+    if isinstance(path_b, (str, Path)):
+        path_bs = [Path(path_b)]
+    else:
+        path_bs = [Path(p) for p in path_b]
 
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "cpu"
 
+    # ---- Extract A once (cache makes this fast anyway) ----
     feats_a = extract_features(
         path_a,
         feature_model=feature_model,
@@ -360,37 +404,47 @@ def run_kid(
         num_workers=num_workers,
         max_images=max_images,
     )
-    feats_b = extract_features(
-        path_b,
-        feature_model=feature_model,
-        device=device,
-        batch_size=batch_size,
-        num_workers=num_workers,
-        max_images=max_images,
-    )
 
-    kid_mean, kid_std = compute_kid(
-        feats_a, feats_b, subset_size=subset_size, n_subsets=n_subsets, seed=seed
-    )
+    results: List[KIDResult] = []
 
-    result = KIDResult(
-        dataset_a=str(path_a),
-        dataset_b=str(path_b),
-        feature_model=feature_model,
-        num_images_a=int(feats_a.shape[0]),
-        num_images_b=int(feats_b.shape[0]),
-        feature_dim=int(feats_a.shape[1]),
-        subset_size=int(min(subset_size, feats_a.shape[0], feats_b.shape[0])),
-        n_subsets=int(n_subsets),
-        kid_mean=float(kid_mean),
-        kid_std=float(kid_std),
-        seed=int(seed),
-    )
+    for pb in path_bs:
+        print(f"[KID] {path_a.name} vs {pb.name}")
 
-    if output is not None:
-        output = Path(output)
-        output.parent.mkdir(parents=True, exist_ok=True)
-        with output.open("w", encoding="utf-8") as f:
-            json.dump(asdict(result), f, indent=2)
+        feats_b = extract_features(
+            pb,
+            feature_model=feature_model,
+            device=device,
+            batch_size=batch_size,
+            num_workers=num_workers,
+            max_images=max_images,
+        )
 
-    return result
+        kid_mean, kid_std = compute_kid(
+            feats_a,
+            feats_b,
+            subset_size=subset_size,
+            n_subsets=n_subsets,
+            seed=seed,
+        )
+
+        result = KIDResult(
+            dataset_a=str(path_a),
+            dataset_b=str(pb),
+            feature_model=feature_model,
+            num_images_a=int(feats_a.shape[0]),
+            num_images_b=int(feats_b.shape[0]),
+            feature_dim=int(feats_a.shape[1]),
+            subset_size=int(min(subset_size, feats_a.shape[0], feats_b.shape[0])),
+            n_subsets=int(n_subsets),
+            kid_mean=float(kid_mean),
+            kid_std=float(kid_std),
+            seed=int(seed),
+        )
+
+        results.append(result)
+
+    # ---- Write CSV once ----
+    if csv_path is not None:
+        append_kid_csv(results, csv_path)
+
+    return results

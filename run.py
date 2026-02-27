@@ -35,21 +35,22 @@ def main() -> int:
         print(stats.render_summary())
 
     if args.kid:
-        res = run_kid(
-            args.kid["path_a"],
-            args.kid["path_b"],
-            output=args.kid["output"],
+        results = run_kid(
+            path_a=args.kid["path_a"],
+            path_b=args.kid["path_bs"],
+            csv_path=args.kid_results,
             feature_model=args.feature_model,
         )
 
-        print("[kid] dataset_a:", res.dataset_a)
-        print("[kid] dataset_b:", res.dataset_b)
-        print("[kid] num_images:", res.num_images_a, res.num_images_b)
-        print("[kid] kid_mean:", res.kid_mean)
-        print("[kid] kid_std :", res.kid_std)
+        for r in results:
+            print(
+                f"[kid] {r.dataset_a} vs {r.dataset_b} | "
+                f"n={r.num_images_a}/{r.num_images_b} | "
+                f"KID={r.kid_mean:.6f} ± {r.kid_std:.6f}"
+            )
 
-        if args.kid["output"]:
-            print("[ok] wrote:", args.kid["output"])
+        if args.kid_results:
+            print(f"[ok] appended → {args.kid_results}")
 
     if args.clip is not None:
         res = run_clip(root=args.root, output=args.clip)
