@@ -14,6 +14,7 @@ from utils import (
     run_split,
     run_transform,
     parse_args,
+    run_graph
 )
 
 
@@ -50,7 +51,7 @@ def main() -> int:
         if args.kid_results:
             print(f"[ok] appended → {args.kid_results}")
 
-    if args.clip is not None:
+    if args.clip:
         results = run_clip(
             root=args.root,
             results_csv=args.clip_results,
@@ -97,6 +98,14 @@ def main() -> int:
         )
 
         print("[ok] transform complete")
+    
+    if args.graph:
+        results = run_graph(
+            path=args.graph,
+            graph_type=args.graph_type,
+        )
+
+        print("[ok] graph complete")
 
     return 0
 

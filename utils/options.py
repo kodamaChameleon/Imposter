@@ -156,6 +156,15 @@ def build_parser() -> argparse.ArgumentParser:
             (default: {DEFAULTS.transform_csv})."
     )
 
+    parser.add_argument("--graph", type=Path)
+    parser.add_argument(
+        "--graph-type",
+        type=str,
+        choices=DEFAULTS.graph_choices,
+        help=f"Data type of results file \
+            (OPTIONS: {' '.join(DEFAULTS.graph_choices)})"
+    )
+
     return parser
 
 

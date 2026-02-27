@@ -103,6 +103,10 @@ class DefaultOptions:
     transform_level: list[int] = field(default_factory=lambda: [6, 10])
     transform_csv: Path = root / "transforms.csv"
 
+    graph_choices: list[str] = field(default_factory=lambda: [
+        "CLIP"
+    ])
+
 
 @dataclass(frozen=True)
 class KaggleConfig:
