@@ -5,7 +5,7 @@ Purpose:     Measure KID distance between two datasets
 Author:      Kodama Chameleon <contact@kodamachameleon.com>
 """
 import csv
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, fields
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -36,25 +36,6 @@ class KIDResult:
     seed: int
 
 
-# ----------------------------
-# CSV writing
-# ----------------------------
-
-CSV_FIELDS = [
-    "dataset_a",
-    "dataset_b",
-    "feature_model",
-    "num_images_a",
-    "num_images_b",
-    "feature_dim",
-    "subset_size",
-    "n_subsets",
-    "kid_mean",
-    "kid_std",
-    "seed",
-]
-
-
 def append_kid_csv(results: List[KIDResult], csv_path: Path) -> None:
     """
     Append one or more KIDResult rows to a CSV.
@@ -66,7 +47,8 @@ def append_kid_csv(results: List[KIDResult], csv_path: Path) -> None:
     file_exists = csv_path.exists()
 
     with csv_path.open("a", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=CSV_FIELDS)
+        fieldnames = [f.name for f in fields(KIDResult)]
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
 
         if not file_exists:
             writer.writeheader()
