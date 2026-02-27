@@ -201,15 +201,20 @@ def _finalize_normalized(master: pd.DataFrame) -> pd.DataFrame:
     # Rename base_dataset → dataset
     df = df.rename(columns={"base_dataset": "dataset"})
 
-    # Null handling
+    # Set lpips values to 0 for originals
     df["transform"] = df["transform"].fillna("none")
     df["lpips"] = df["lpips"].fillna(0)
 
+    # Add image counts to originals
     if "images" in df.columns:
         df["images"] = (
             df.groupby("dataset")["images"]
             .transform("max")
         )
+    
+    # Add level to originals
+    orig_mask = (df["transform"] == "none") & (df["level"].isna())
+    df.loc[orig_mask, "level"] = 100
 
     # Images → integer
     if "images" in df.columns:
