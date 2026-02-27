@@ -208,3 +208,4 @@ __marimo__/
 
 # Ignore datasets folder
 datasets/
+results/
