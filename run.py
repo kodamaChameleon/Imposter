@@ -43,27 +43,30 @@ def main() -> int:
         )
 
         for r in results:
-            print(
-                f"[kid] {r.dataset_a} vs {r.dataset_b} | "
-                f"n={r.num_images_a}/{r.num_images_b} | "
-                f"KID={r.kid_mean:.6f} ± {r.kid_std:.6f}"
-            )
+            print(f"[clip] dataset   : {r.dataset}")
+            print(f"[clip] num_images: {r.num_images}")
+            print(f"[clip] score     : {r.score:.6f}")
 
         if args.kid_results:
             print(f"[ok] appended → {args.kid_results}")
 
     if args.clip is not None:
-        res = run_clip(root=args.root, output=args.clip)
+        results = run_clip(
+            root=args.root,
+            results_csv=args.clip_results,
+            clip_mode=args.clip_mode,
+        )
 
-        print("[clip] dataset:", res.dataset)
-        print("[clip] num_images:", res.num_images)
-        print("[clip] global_mean:", res.global_mean)
+        for r in results:
+            print(
+                f"[clip] {r.dataset:<14} | "
+                f"mode={r.clip_mode:<8} | "
+                f"n={r.num_images:6d} | "
+                f"score={r.score:.4f}"
+            )
 
-        for m, v in res.per_model.items():
-            print(f"[clip] {m}: {v}")
-
-        if args.clip:
-            print("[ok] wrote:", args.clip)
+        if args.clip_results:
+            print(f"[ok] appended → {args.clip_results}")
 
     if args.split:
         split_cfg = SplitConfig(

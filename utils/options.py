@@ -56,17 +56,21 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--feature-model",
         type=str,
-        default=DEFAULTS.feature_model,
-        choices=DEFAULTS.feature_choices,
-        help=f"Feature extractor for KID. (Default: {DEFAULTS.feature_model}). \
-            Options: {', '.join(DEFAULTS.feature_choices)}",
+        default=DEFAULTS.kid_model,
+        choices=DEFAULTS.kid_choices,
+        help=f"Feature extractor for KID. (Default: {DEFAULTS.kid_model}). \
+            Options: {', '.join(DEFAULTS.kid_choices)}",
     )
     parser.add_argument(
-    "--clip",
-        nargs="?",
-        const="clip.json",
-        metavar="OUTPUT",
-        help="Compute CLIP score for SFHQ-T2I (optionally provide output.json).",
+        "--clip",
+        action="store_true",
+        help="Compute CLIP score for SFHQ-T2I.",
+    )
+    parser.add_argument(
+        "--clip-results",
+        type=Path,
+        default=DEFAULTS.clip_csv,
+        help="CSV file to store CLIP results (append mode).",
     )
     parser.add_argument(
         "--clip-mode",
@@ -202,16 +206,6 @@ def validate_args(args: argparse.Namespace) -> argparse.Namespace:
             Path(args.transform[0]),
             Path(args.transform[1]),
         ]
-
-    # CLIP
-    if args.clip is not None:
-        # If a string is provided, wrap it as Path; else keep None
-        if isinstance(args.clip, str):
-            args.clip = Path(args.clip)
-        else:
-            args.clip = None
-    
-    
 
     return args
 
