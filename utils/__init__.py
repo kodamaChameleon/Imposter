@@ -12,7 +12,7 @@ from .clip import run_clip
 from .split import run_split
 from .transform import run_transform
 from .options import parse_args
-from .graph import run_graph
+from .graph import run_graph, run_normalization
 
 __all__ = [
     "make_config",
@@ -24,5 +24,6 @@ __all__ = [
     "run_split",
     "run_transform",
     "parse_args",
-    "run_graph"
+    "run_graph",
+    "run_normalization"
 ]

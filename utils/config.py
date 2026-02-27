@@ -106,6 +106,7 @@ class DefaultOptions:
     graph_choices: list[str] = field(default_factory=lambda: [
         "CLIP", "KID"
     ])
+    normalized_output: Path = root / "master_results.csv"
 
 
 @dataclass(frozen=True)

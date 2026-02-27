@@ -164,6 +164,19 @@ def build_parser() -> argparse.ArgumentParser:
         help=f"Data type of results file \
             (OPTIONS: {' '.join(DEFAULTS.graph_choices)})"
     )
+    parser.add_argument(
+        "--normalize",
+        nargs="+",
+        type=Path,
+        metavar="PATH",
+        help="Path to results data to normalize (<pathA> <pathB> <pathC> ...)"
+    )
+    parser.add_argument(
+        "--normalized-output",
+        type=Path,
+        default=DEFAULTS.normalized_output,
+        help="Path to store normalization output.",
+    )
 
     return parser
 

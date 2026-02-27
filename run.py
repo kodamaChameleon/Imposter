@@ -14,7 +14,8 @@ from utils import (
     run_split,
     run_transform,
     parse_args,
-    run_graph
+    run_graph,
+    run_normalization
 )
 
 
@@ -106,6 +107,14 @@ def main() -> int:
         )
 
         print("[ok] graph complete")
+    
+    if args.normalize is not None:
+        results = run_normalization(
+            input_paths=args.normalize,
+            output_path=args.normalized_output
+        )
+
+        print(f"[ok] normalized results saved to {args.normalized_output}")
 
     return 0
 
