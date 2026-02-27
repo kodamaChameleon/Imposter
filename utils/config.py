@@ -104,7 +104,7 @@ class DefaultOptions:
     transform_csv: Path = root / "transforms.csv"
 
     graph_choices: list[str] = field(default_factory=lambda: [
-        "CLIP"
+        "CLIP", "KID"
     ])
 
 

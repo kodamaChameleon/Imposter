@@ -23,6 +23,14 @@ class ClipGraphRow:
     score_sliding: float | None
 
 
+@dataclass
+class KidGraphRow:
+    dataset: str
+    count: int
+    score_inception: float | None
+    score_dinov2: float | None
+
+
 # ---------------------------------------------------------------------
 # CLIP graph
 # ---------------------------------------------------------------------
@@ -46,7 +54,41 @@ def _build_clip_table(csv_path: Path) -> pd.DataFrame:
     return table.sort_index()
 
 
-def _save_table_png(df: pd.DataFrame, output_path: Path) -> None:
+def _build_kid_table(csv_path: Path) -> pd.DataFrame:
+    df = pd.read_csv(csv_path)
+
+    if df.empty:
+        raise ValueError(f"[graph] CSV is empty → {csv_path}")
+
+    # Use only basename of dataset_b
+    df["dataset"] = Path("").joinpath  # placeholder to keep lint happy
+    df["dataset"] = df["dataset_b"].map(lambda p: Path(p).name)
+
+    pivot = df.pivot(index="dataset", columns="feature_model", values="kid_mean")
+
+    counts = (
+        df.groupby("dataset")["num_images_b"]
+        .first()
+        .reindex(pivot.index)
+    )
+
+    table = pd.DataFrame(index=pivot.index)
+    table["count"] = counts
+
+    if "inception" in pivot.columns:
+        table["score (inception)"] = pivot["inception"]
+
+    if "dinov2_vitb14" in pivot.columns:
+        table["score (dinov2_vitb14)"] = pivot["dinov2_vitb14"]
+
+    return table.sort_index()
+
+
+def _save_table_png(
+    df: pd.DataFrame,
+    output_path: Path,
+    title: str,
+) -> None:
     display_df = df.copy()
 
     # Formatting
@@ -90,7 +132,7 @@ def _save_table_png(df: pd.DataFrame, output_path: Path) -> None:
             for j in range(len(display_df.columns)):
                 table[(i, j)].set_facecolor("#F7F7F7")
 
-    ax.set_title("CLIP Score Comparison", fontsize=14, weight="bold", pad=6)
+    ax.set_title(title, fontsize=14, weight="bold", pad=6)
 
     fig.tight_layout()
     fig.savefig(output_path, dpi=320, bbox_inches="tight")
@@ -99,8 +141,9 @@ def _save_table_png(df: pd.DataFrame, output_path: Path) -> None:
 
 def run_graph_clip(csv_path: Path) -> list[ClipGraphRow]:
     table = _build_clip_table(csv_path)
+    title = "CLIP Score Comparison"
 
-    print("\n[graph] CLIP score comparison\n")
+    print(f"\n[graph] {title}\n")
     print(
         table.to_string(
             float_format=lambda x: "—" if pd.isna(x) else f"{x:.4f}"
@@ -108,7 +151,7 @@ def run_graph_clip(csv_path: Path) -> list[ClipGraphRow]:
     )
 
     output_path = csv_path.with_suffix(".png")
-    _save_table_png(table, output_path)
+    _save_table_png(table, output_path, title)
 
     print(f"\n[ok] graph saved → {output_path}")
 
@@ -131,6 +174,41 @@ def run_graph_clip(csv_path: Path) -> list[ClipGraphRow]:
     return rows
 
 
+def run_graph_kid(csv_path: Path) -> list[KidGraphRow]:
+    table = _build_kid_table(csv_path)
+    title = "KID Score Comparison"
+
+    print(f"\n[graph] {title}\n")
+    print(
+        table.to_string(
+            float_format=lambda x: "—" if pd.isna(x) else f"{x:.4f}"
+        )
+    )
+
+    output_path = csv_path.with_suffix(".png")
+    _save_table_png(table, output_path, title)
+
+    print(f"\n[ok] graph saved → {output_path}")
+
+    rows: list[KidGraphRow] = []
+
+    for dataset, r in table.iterrows():
+        rows.append(
+            KidGraphRow(
+                dataset=dataset,
+                count=int(r["count"]),
+                score_inception=None
+                if "score (inception)" not in table.columns or pd.isna(r.get("score (inception)"))
+                else float(r["score (inception)"]),
+                score_dinov2=None
+                if "score (dinov2_vitb14)" not in table.columns or pd.isna(r.get("score (dinov2_vitb14)"))
+                else float(r["score (dinov2_vitb14)"]),
+            )
+        )
+
+    return rows
+
+
 # ---------------------------------------------------------------------
 # Dispatcher
 # ---------------------------------------------------------------------
@@ -138,5 +216,8 @@ def run_graph_clip(csv_path: Path) -> list[ClipGraphRow]:
 def run_graph(path: Path, graph_type: str):
     if graph_type == "CLIP":
         return run_graph_clip(path)
+    
+    if graph_type == "KID":
+        return run_graph_kid(path)
 
     raise ValueError(f"Unsupported --graph-type: {graph_type}")
