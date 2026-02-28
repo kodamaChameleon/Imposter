@@ -15,6 +15,9 @@ import matplotlib.pyplot as plt
 # Data container (matches style of kid/clip result objects)
 # ---------------------------------------------------------------------
 MERGE_KEYS = ["base_dataset", "transform", "level"]
+LINESTYLES = ["-", "--", "-.", ":"]
+MARKERSIZE = 3
+LINEWIDTH = 2
 
 @dataclass
 class ClipGraphRow:
@@ -292,26 +295,191 @@ def _build_kid_table(csv_path: Path) -> pd.DataFrame:
     return table.sort_index()
 
 
+def _table_test_baseline(df: pd.DataFrame, csv_path: Path):
+    title = "Baseline Test Results"
+
+    base = (
+        df[df["transform"] == "none"]
+        .sort_values("dataset")
+        .set_index("dataset")[
+            [
+                "UFD_accuracy",
+                "UFD_precision",
+                "SAFE_accuracy",
+                "SAFE_precision",
+            ]
+        ]
+        .rename(
+            columns={
+                "UFD_accuracy": "UFD_acc",
+                "UFD_precision": "UFD_ap",
+                "SAFE_accuracy": "SAFE_acc",
+                "SAFE_precision": "SAFE_ap",
+            }
+        )
+    )
+
+    print(f"\n[graph] {title}\n")
+    print(base.to_string(float_format=lambda x: f"{x:.4f}"))
+
+    out = csv_path.with_name(csv_path.stem + "_baseline.png")
+    _save_table_png(base, out, title)
+
+
+def _graph_test_accuracy_vs_level(df: pd.DataFrame, csv_path: Path):
+    detectors = {
+        "UFD": "UFD_accuracy",
+        "SAFE": "SAFE_accuracy",
+    }
+
+    base = df[df["transform"] == "none"].set_index("dataset")
+    work = df[df["transform"] != "none"]
+
+    for dataset in work["dataset"].unique():
+        dsub = work[work["dataset"] == dataset]
+
+        for transform in dsub["transform"].unique():
+            tsub = dsub[dsub["transform"] == transform].sort_values("level")
+
+            plt.figure()
+
+            for i, (det_name, col) in enumerate(detectors.items()):
+                if tsub[col].notna().any():
+                    origin_val = base.loc[dataset, col]
+
+                    curve = pd.concat(
+                        [
+                            pd.DataFrame({"level": [100], col: [origin_val]}),
+                            tsub[["level", col]],
+                        ]
+                    ).sort_values("level")
+
+                    plt.plot(
+                        curve["level"],
+                        curve[col],
+                        label=det_name,
+                        linestyle=LINESTYLES[i % len(LINESTYLES)],
+                        marker="o",
+                        markersize=MARKERSIZE,
+                        linewidth=LINEWIDTH,
+                    )
+
+            plt.gca().invert_xaxis()
+            plt.title(f"{dataset.upper().replace('_', ' ')} – {transform.upper()}\nAccuracy vs Level")
+            plt.xlabel("level")
+            plt.ylabel("accuracy")
+            plt.legend()
+            plt.tight_layout()
+
+            out = csv_path.with_name(
+                f"acc_vs_level_{dataset}_{transform}.png"
+            )
+            plt.savefig(out, dpi=300)
+            plt.close()
+
+
+
+
+def _graph_test_accuracy_vs_lpips(df: pd.DataFrame, csv_path: Path):
+    detectors = {
+        "UFD": "UFD_accuracy",
+        "SAFE": "SAFE_accuracy",
+    }
+
+    base = df[df["transform"] == "none"].set_index("dataset")
+    work = df[df["transform"] != "none"]
+
+    for dataset in work["dataset"].unique():
+        dsub = work[work["dataset"] == dataset]
+
+        for det_name, col in detectors.items():
+            plt.figure()
+
+            for i, transform in enumerate(dsub["transform"].unique()):
+                tsub = (
+                    dsub[dsub["transform"] == transform]
+                    .sort_values("lpips")
+                )
+
+                if tsub[col].notna().any():
+                    origin_val = base.loc[dataset, col]
+
+                    curve = pd.concat(
+                        [
+                            pd.DataFrame({"lpips": [0], col: [origin_val]}),
+                            tsub[["lpips", col]],
+                        ]
+                    ).sort_values("lpips")
+
+                    plt.plot(
+                        curve["lpips"],
+                        curve[col],
+                        label=transform,
+                        linestyle=LINESTYLES[i % len(LINESTYLES)],
+                        marker="o",
+                        markersize=MARKERSIZE,
+                        linewidth=LINEWIDTH,
+                    )
+
+            plt.title(f"{dataset.upper().replace('_', ' ')} – {det_name}\nAccuracy vs LPIPS")
+            plt.xlabel("LPIPS")
+            plt.ylabel("accuracy")
+            plt.legend()
+
+            # Adjust X scale
+            ax = plt.gca()
+            ax.set_xscale("symlog", linthresh=1e-3)
+            ax.xaxis.set_major_formatter(plt.ScalarFormatter())
+            ax.ticklabel_format(style="plain", axis="x")
+
+            plt.tight_layout()
+
+            out = csv_path.with_name(
+                f"acc_vs_lpips_{det_name}_{dataset}.png"
+            )
+            plt.savefig(out, dpi=300)
+            plt.close()
+
+
 def _save_table_png(
     df: pd.DataFrame,
     output_path: Path,
     title: str,
+    *,
+    float_precision: int = 4,
+    na_rep: str = "—",
 ) -> None:
     display_df = df.copy()
 
-    # Formatting
-    display_df["count"] = display_df["count"].map(lambda x: f"{int(x):,}")
-
+    # -----------------------------
+    # dtype-driven formatting
+    # -----------------------------
     for col in display_df.columns:
-        if col.startswith("score"):
-            display_df[col] = display_df[col].map(
-                lambda x: "—" if pd.isna(x) else f"{x:.4f}"
+        series = display_df[col]
+
+        if pd.api.types.is_integer_dtype(series):
+            display_df[col] = series.map(
+                lambda x: na_rep if pd.isna(x) else f"{int(x):,}"
             )
 
-    fig_height = 0.40 * len(display_df) 
-    fig_width = len(display_df.columns)
-    fig, ax = plt.subplots(figsize=(fig_width, fig_height))
+        elif pd.api.types.is_float_dtype(series):
+            fmt = f"{{:.{float_precision}f}}"
+            display_df[col] = series.map(
+                lambda x: na_rep if pd.isna(x) else fmt.format(x)
+            )
 
+        else:
+            display_df[col] = series.fillna(na_rep)
+
+    # -----------------------------
+    # dynamic sizing
+    # -----------------------------
+    n_rows, n_cols = display_df.shape
+
+    fig_width = 7.5
+    fig_height = n_rows * 0.4
+
+    fig, ax = plt.subplots(figsize=(fig_width, fig_height))
     ax.axis("off")
 
     table = ax.table(
@@ -324,23 +492,26 @@ def _save_table_png(
     )
 
     table.auto_set_font_size(False)
-    table.auto_set_column_width(col=list(range(len(display_df.columns))))
     table.set_fontsize(10)
-    table.scale(1, 1.4)
+    table.scale(1, 1.35)
 
-    # Header styling
+    # -----------------------------
+    # header styling
+    # -----------------------------
     for (row, col), cell in table.get_celld().items():
         if row == 0:
             cell.set_text_props(weight="bold")
             cell.set_facecolor("#EAEAF2")
 
-    # Zebra striping
-    for i in range(1, len(display_df) + 1):
-        if i % 2 == 0:
-            for j in range(len(display_df.columns)):
-                table[(i, j)].set_facecolor("#F7F7F7")
+    # -----------------------------
+    # zebra striping
+    # -----------------------------
+    for r in range(1, n_rows + 1):
+        if r % 2 == 0:
+            for c in range(n_cols):
+                table[(r, c)].set_facecolor("#F7F7F7")
 
-    ax.set_title(title, fontsize=14, weight="bold", pad=6)
+    ax.set_title(title, fontsize=14, weight="bold", pad=4)
 
     fig.tight_layout()
     fig.savefig(output_path, dpi=320, bbox_inches="tight")
@@ -417,6 +588,16 @@ def run_graph_kid(csv_path: Path) -> list[KidGraphRow]:
     return rows
 
 
+def run_graph_test(csv_path: Path):
+    df = pd.read_csv(csv_path)
+
+    _table_test_baseline(df, csv_path)
+    _graph_test_accuracy_vs_level(df, csv_path)
+    _graph_test_accuracy_vs_lpips(df, csv_path)
+
+    print("[ok] test graphs complete")
+
+
 # ---------------------------------------------------------------------
 # Dispatcher
 # ---------------------------------------------------------------------
@@ -427,6 +608,9 @@ def run_graph(path: Path, graph_type: str):
     
     if graph_type == "KID":
         return run_graph_kid(path)
+
+    if graph_type == "TEST":
+        return run_graph_test(path)
 
     raise ValueError(f"Unsupported --graph-type: {graph_type}")
 

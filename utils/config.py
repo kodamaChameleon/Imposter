@@ -104,9 +104,9 @@ class DefaultOptions:
     transform_csv: Path = root / "transforms.csv"
 
     graph_choices: list[str] = field(default_factory=lambda: [
-        "CLIP", "KID"
+        "CLIP", "KID", "TEST"
     ])
-    normalized_output: Path = root / "master_results.csv"
+    normalized_output: Path = root / "test_results.csv"
 
 
 @dataclass(frozen=True)
