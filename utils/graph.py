@@ -243,7 +243,7 @@ def _finalize_normalized(master: pd.DataFrame) -> pd.DataFrame:
 
 
 # ---------------------------------------------------------------------
-# Graphs
+# Graphs & Tables
 # ---------------------------------------------------------------------
 
 def _build_clip_table(csv_path: Path) -> pd.DataFrame:
@@ -376,8 +376,6 @@ def _graph_test_accuracy_vs_level(df: pd.DataFrame, csv_path: Path):
             )
             plt.savefig(out, dpi=300)
             plt.close()
-
-
 
 
 def _graph_test_accuracy_vs_lpips(df: pd.DataFrame, csv_path: Path):
