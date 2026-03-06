@@ -95,18 +95,20 @@ def _table_test_baseline(df: pd.DataFrame, csv_path: Path):
         .sort_values("dataset")
         .set_index("dataset")[
             [
+                "images",
                 "UFD_accuracy",
                 "UFD_precision",
                 "SAFE_accuracy",
-                "SAFE_precision",
+                "SAFE_precision"
             ]
         ]
         .rename(
             columns={
+                "images": "count",
                 "UFD_accuracy": "UFD_acc",
                 "UFD_precision": "UFD_ap",
                 "SAFE_accuracy": "SAFE_acc",
-                "SAFE_precision": "SAFE_ap",
+                "SAFE_precision": "SAFE_ap"
             }
         )
     )
@@ -159,7 +161,7 @@ def _graph_test_accuracy_vs_level(df: pd.DataFrame, csv_path: Path):
             plt.gca().invert_xaxis()
             plt.title(f"{dataset.upper().replace('_', ' ')} – {transform.upper()}\nAccuracy vs Level")
             plt.xlabel("level")
-            plt.ylabel("accuracy")
+            plt.ylabel("accuracy (%)")
             plt.legend()
             plt.tight_layout()
 
@@ -179,25 +181,89 @@ def _graph_test_accuracy_vs_lpips(df: pd.DataFrame, csv_path: Path):
     base = df[df["transform"] == "none"].set_index("dataset")
     work = df[df["transform"] != "none"]
 
+    directional_transforms = {"contrast", "saturation"}
+
     for dataset in work["dataset"].unique():
         dsub = work[work["dataset"] == dataset]
 
         for det_name, col in detectors.items():
             plt.figure()
 
-            for i, transform in enumerate(dsub["transform"].unique()):
-                tsub = (
-                    dsub[dsub["transform"] == transform]
-                    .sort_values("lpips")
-                )
+            curve_index = 0  # for linestyle cycling
 
-                if tsub[col].notna().any():
-                    origin_val = base.loc[dataset, col]
+            for transform in dsub["transform"].unique():
+                tsub = dsub[dsub["transform"] == transform]
+
+                if not tsub[col].notna().any():
+                    continue
+
+                origin_val = base.loc[dataset, col]
+
+                # ----------------------------------------
+                # Split directional transforms
+                # ----------------------------------------
+                if transform in directional_transforms:
+
+                    # Decrease branch (<=100)
+                    dec = (
+                        tsub[tsub["level"] <= 100]
+                        .sort_values("lpips")
+                    )
+
+                    if not dec.empty:
+                        curve = pd.concat(
+                            [
+                                pd.DataFrame({"lpips": [0], col: [origin_val]}),
+                                dec[["lpips", col]],
+                            ]
+                        ).sort_values("lpips")
+
+                        plt.plot(
+                            curve["lpips"],
+                            curve[col],
+                            label=f"{transform} ↓",
+                            linestyle=LINESTYLES[curve_index % len(LINESTYLES)],
+                            marker="o",
+                            markersize=MARKERSIZE,
+                            linewidth=LINEWIDTH,
+                        )
+                        curve_index += 1
+
+                    # Increase branch (>=100)
+                    inc = (
+                        tsub[tsub["level"] >= 100]
+                        .sort_values("lpips")
+                    )
+
+                    if not inc.empty:
+                        curve = pd.concat(
+                            [
+                                pd.DataFrame({"lpips": [0], col: [origin_val]}),
+                                inc[["lpips", col]],
+                            ]
+                        ).sort_values("lpips")
+
+                        plt.plot(
+                            curve["lpips"],
+                            curve[col],
+                            label=f"{transform} ↑",
+                            linestyle=LINESTYLES[curve_index % len(LINESTYLES)],
+                            marker="o",
+                            markersize=MARKERSIZE,
+                            linewidth=LINEWIDTH,
+                        )
+                        curve_index += 1
+
+                # ----------------------------------------
+                # Normal transforms (single curve)
+                # ----------------------------------------
+                else:
+                    tsub_sorted = tsub.sort_values("lpips")
 
                     curve = pd.concat(
                         [
                             pd.DataFrame({"lpips": [0], col: [origin_val]}),
-                            tsub[["lpips", col]],
+                            tsub_sorted[["lpips", col]],
                         ]
                     ).sort_values("lpips")
 
@@ -205,15 +271,16 @@ def _graph_test_accuracy_vs_lpips(df: pd.DataFrame, csv_path: Path):
                         curve["lpips"],
                         curve[col],
                         label=transform,
-                        linestyle=LINESTYLES[i % len(LINESTYLES)],
+                        linestyle=LINESTYLES[curve_index % len(LINESTYLES)],
                         marker="o",
                         markersize=MARKERSIZE,
                         linewidth=LINEWIDTH,
                     )
+                    curve_index += 1
 
             plt.title(f"{dataset.upper().replace('_', ' ')} – {det_name}\nAccuracy vs LPIPS")
             plt.xlabel("LPIPS")
-            plt.ylabel("accuracy")
+            plt.ylabel("accuracy (%)")
             plt.legend()
 
             # Adjust X scale
