@@ -14,6 +14,8 @@ from utils import (
     run_split,
     run_transform,
     parse_args,
+    run_graph,
+    run_normalization
 )
 
 
@@ -35,34 +37,38 @@ def main() -> int:
         print(stats.render_summary())
 
     if args.kid:
-        res = run_kid(
-            args.kid["path_a"],
-            args.kid["path_b"],
-            output=args.kid["output"],
+        results = run_kid(
+            path_a=args.kid["path_a"],
+            path_b=args.kid["path_bs"],
+            csv_path=args.kid_results,
             feature_model=args.feature_model,
         )
 
-        print("[kid] dataset_a:", res.dataset_a)
-        print("[kid] dataset_b:", res.dataset_b)
-        print("[kid] num_images:", res.num_images_a, res.num_images_b)
-        print("[kid] kid_mean:", res.kid_mean)
-        print("[kid] kid_std :", res.kid_std)
+        for r in results:
+            print(f"[clip] dataset   : {r.dataset}")
+            print(f"[clip] num_images: {r.num_images}")
+            print(f"[clip] score     : {r.score:.6f}")
 
-        if args.kid["output"]:
-            print("[ok] wrote:", args.kid["output"])
+        if args.kid_results:
+            print(f"[ok] appended → {args.kid_results}")
 
-    if args.clip is not None:
-        res = run_clip(root=args.root, output=args.clip)
+    if args.clip:
+        results = run_clip(
+            root=args.root,
+            results_csv=args.clip_results,
+            clip_mode=args.clip_mode,
+        )
 
-        print("[clip] dataset:", res.dataset)
-        print("[clip] num_images:", res.num_images)
-        print("[clip] global_mean:", res.global_mean)
+        for r in results:
+            print(
+                f"[clip] {r.dataset:<14} | "
+                f"mode={r.clip_mode:<8} | "
+                f"n={r.num_images:6d} | "
+                f"score={r.score:.4f}"
+            )
 
-        for m, v in res.per_model.items():
-            print(f"[clip] {m}: {v}")
-
-        if args.clip:
-            print("[ok] wrote:", args.clip)
+        if args.clip_results:
+            print(f"[ok] appended → {args.clip_results}")
 
     if args.split:
         split_cfg = SplitConfig(
@@ -93,6 +99,22 @@ def main() -> int:
         )
 
         print("[ok] transform complete")
+    
+    if args.graph:
+        results = run_graph(
+            path=args.graph,
+            graph_type=args.graph_type,
+        )
+
+        print("[ok] graph complete")
+    
+    if args.normalize is not None:
+        results = run_normalization(
+            input_paths=args.normalize,
+            output_path=args.normalized_output
+        )
+
+        print(f"[ok] normalized results saved to {args.normalized_output}")
 
     return 0
 

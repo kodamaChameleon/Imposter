@@ -69,12 +69,14 @@ class DefaultOptions:
     root: Path = Path("datasets")
     download_choices: tuple[str, ...] = ("all", "sfhq_t2i", "ffhq", "tpdne")
 
-    feature_model: str = "inception"
-    feature_choices: list[str] = field(
+    kid_model: str = "inception"
+    kid_choices: list[str] = field(
         default_factory=lambda: ["inception", "dinov2_vitb14"]
     )
+    kid_csv: Path = root / "KID_scores.csv"
 
     clip_mode: str = "sliding"
+    clip_csv: Path = root / "CLIP_scores.csv"
     clip_choices: list[str] = field(
         default_factory=lambda: ["sliding", "truncate"]
     )
@@ -100,6 +102,11 @@ class DefaultOptions:
 
     transform_level: list[int] = field(default_factory=lambda: [6, 10])
     transform_csv: Path = root / "transforms.csv"
+
+    graph_choices: list[str] = field(default_factory=lambda: [
+        "CLIP", "KID", "TEST"
+    ])
+    normalized_output: Path = root / "test_results.csv"
 
 
 @dataclass(frozen=True)

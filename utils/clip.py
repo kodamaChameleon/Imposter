@@ -5,8 +5,8 @@ Purpose:     CLIP score computation for SFHQ-T2I.
 Author:      Kodama Chameleon <contact@kodamachameleon.com>
 """
 
-import json
-from dataclasses import dataclass
+import csv
+from dataclasses import dataclass, fields, asdict
 from pathlib import Path
 from typing import List
 
@@ -28,25 +28,33 @@ class CLIPResult:
     """
     Container for aggregated CLIP scoring results.
     """
-
-    dataset: Path
+    dataset: str
+    clip_mode: str
     num_images: int
-    global_mean: float
-    per_model: dict[str, float]
-
-    def to_json(self):
-        """Serialize the result to a JSON-compatible dictionary."""
-        return {
-            "dataset": str(self.dataset),
-            "num_images": self.num_images,
-            "global_mean": self.global_mean,
-            "per_model": self.per_model,
-        }
+    score: float
 
 
 # -----------------------------
 # Helpers
 # -----------------------------
+
+
+def append_clip_csv(results: List[CLIPResult], csv_path: Path) -> None:
+    csv_path = Path(csv_path)
+    csv_path.parent.mkdir(parents=True, exist_ok=True)
+
+    file_exists = csv_path.exists()
+    fieldnames = [f.name for f in fields(CLIPResult)]
+
+    with csv_path.open("a", newline="", encoding="utf-8") as f:
+        
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+
+        if not file_exists:
+            writer.writeheader()
+
+        for r in results:
+            writer.writerow(asdict(r))
 
 
 def chunk_prompt(
@@ -159,7 +167,7 @@ def encode_batch(model, image_inputs, text_inputs):
     return sims
 
 
-def aggregate_sliding(sims, chunk_map, model_names, scores, per_model):
+def aggregate_sliding(sims, chunk_map, model_names, per_model):
     """
     Aggregate sliding-window similarities into a single score per image.
     For each image, the maximum similarity across all its prompt chunks
@@ -173,18 +181,16 @@ def aggregate_sliding(sims, chunk_map, model_names, scores, per_model):
 
         score = sims[idxs, img_idx].max().item()
 
-        scores.append(score)
         per_model.setdefault(model_names[img_idx], []).append(score)
 
 
-def aggregate_truncate(sims, model_names, scores, per_model):
+def aggregate_truncate(sims, model_names, per_model):
     """
     Aggregate similarities when using truncated prompts.
     Assumes one text per image and uses the diagonal of the similarity matrix.
     """
     for i, score in enumerate(sims.diag()):
         val = score.item()
-        scores.append(val)
         per_model.setdefault(model_names[i], []).append(val)
 
 
@@ -195,21 +201,21 @@ def aggregate_truncate(sims, model_names, scores, per_model):
 
 def run_clip(
     root: Path,
-    csv_path: Path | None = None,
-    output: Path | None = None,
+    dataset_csv: Path | None = None,   # ← was csv_path (INPUT)
+    results_csv: Path | None = None,   # ← NEW (OUTPUT, append)
     model_name: str = CLIP_MODEL,
     device: str | None = None,
     batch_size: int = 32,
     clip_mode: str = "sliding",
-) -> CLIPResult:
+) -> List[CLIPResult]:
     """
     Compute CLIP image–text similarity scores for a generated image dataset.
 
     Parameters
     ----------
     root : Path | `root / sorted / <model_name> / <image_file>`.
-    csv_path : Path, optional
-    output : Path, optional | If provided, writes the aggregated result as JSON.
+    dataset_csv : Path, optional
+    results_csv : Path, optional | If provided, writes the aggregated result as csv.
     model_name : str | Hugging Face CLIP model identifier.
     device : str, optional | Target device. Auto-selects CUDA if available.
     batch_size : int, default=32 | Number of samples processed per forward pass.
@@ -222,15 +228,14 @@ def run_clip(
     device = device or ("cuda" if torch.cuda.is_available() else "cpu")
     use_fp16 = device == "cuda"
 
-    if csv_path is None:
-        csv_path = root / "SFHQ-T2I" / "SFHQ_T2I_dataset.csv"
+    if dataset_csv is None:
+        dataset_csv = root / "SFHQ-T2I" / "SFHQ_T2I_dataset.csv"
 
-    df = pd.read_csv(csv_path)
+    df = pd.read_csv(dataset_csv)
     sorted_dir = root / "sorted"
 
     model, processor, tokenizer = load_clip(model_name, device, use_fp16)
 
-    scores = []
     per_model = {}
 
     rows = list(df.itertuples())
@@ -250,7 +255,8 @@ def run_clip(
                 images.append(Image.open(img_path).convert("RGB"))
                 prompts.append(row.text_prompt)
                 model_names.append(row.model_used)
-            except Exception:
+            except Exception as e:
+                print(f"WARNING: {e}")
                 continue
 
         if not images:
@@ -270,20 +276,23 @@ def run_clip(
         sims = encode_batch(model, image_inputs, text_inputs)
 
         if clip_mode == "sliding":
-            aggregate_sliding(sims, chunk_map, model_names, scores, per_model)
+            aggregate_sliding(sims, chunk_map, model_names, per_model)
         elif clip_mode == "truncate":
-            aggregate_truncate(sims, model_names, scores, per_model)
+            aggregate_truncate(sims, model_names, per_model)
 
-    per_model_mean = {m: float(torch.tensor(v).mean()) for m, v in per_model.items()}
+    results: List[CLIPResult] = []
 
-    result = CLIPResult(
-        dataset=root,
-        num_images=len(scores),
-        global_mean=float(torch.tensor(scores).mean()),
-        per_model=per_model_mean,
-    )
+    for dataset_name, values in per_model.items():
+        results.append(
+            CLIPResult(
+                dataset=dataset_name,
+                clip_mode=clip_mode,
+                num_images=len(values),
+                score = float(sum(values) / len(values)),
+            )
+        )
 
-    if output:
-        output.write_text(json.dumps(result.to_json(), indent=2))
+    if results_csv is not None:
+        append_clip_csv(results, results_csv)
 
-    return result
+    return results

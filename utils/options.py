@@ -45,22 +45,32 @@ def build_parser() -> argparse.ArgumentParser:
         "--kid",
         nargs="+",
         metavar="PATH",
-        help="Compute KID between two datasets. Usage: --kid <pathA> <pathB> [output.json]",
+        help="Compute KID: --kid <pathA> <pathB> <pathC> ..."
+    )
+    parser.add_argument(
+        "--kid-results",
+        type=Path,
+        default=DEFAULTS.kid_csv,
+        help="CSV file to store KID results (append mode).",
     )
     parser.add_argument(
         "--feature-model",
         type=str,
-        default=DEFAULTS.feature_model,
-        choices=DEFAULTS.feature_choices,
-        help=f"Feature extractor for KID. (Default: {DEFAULTS.feature_model}). \
-            Options: {', '.join(DEFAULTS.feature_choices)}",
+        default=DEFAULTS.kid_model,
+        choices=DEFAULTS.kid_choices,
+        help=f"Feature extractor for KID. (Default: {DEFAULTS.kid_model}). \
+            Options: {', '.join(DEFAULTS.kid_choices)}",
     )
     parser.add_argument(
-    "--clip",
-        nargs="?",
-        const="clip.json",
-        metavar="OUTPUT",
-        help="Compute CLIP score for SFHQ-T2I (optionally provide output.json).",
+        "--clip",
+        action="store_true",
+        help="Compute CLIP score for SFHQ-T2I.",
+    )
+    parser.add_argument(
+        "--clip-results",
+        type=Path,
+        default=DEFAULTS.clip_csv,
+        help="CSV file to store CLIP results (append mode).",
     )
     parser.add_argument(
         "--clip-mode",
@@ -146,6 +156,28 @@ def build_parser() -> argparse.ArgumentParser:
             (default: {DEFAULTS.transform_csv})."
     )
 
+    parser.add_argument("--graph", type=Path)
+    parser.add_argument(
+        "--graph-type",
+        type=str,
+        choices=DEFAULTS.graph_choices,
+        help=f"Data type of results file \
+            (OPTIONS: {' '.join(DEFAULTS.graph_choices)})"
+    )
+    parser.add_argument(
+        "--normalize",
+        nargs="+",
+        type=Path,
+        metavar="PATH",
+        help="Path to results data to normalize (<pathA> <pathB> <pathC> ...)"
+    )
+    parser.add_argument(
+        "--normalized-output",
+        type=Path,
+        default=DEFAULTS.normalized_output,
+        help="Path to store normalization output.",
+    )
+
     return parser
 
 
@@ -175,15 +207,14 @@ def validate_args(args: argparse.Namespace) -> argparse.Namespace:
 
     # KID validation + coercion
     if args.kid:
-        if len(args.kid) not in (2, 3):
+        if len(args.kid) < 2:
             raise ValueError(
-                "--kid expects 2 or 3 args: <pathA> <pathB> [output.json]"
+                "--kid expects: <pathA> <pathB> <pathC> ..."
             )
 
         args.kid = {
             "path_a": Path(args.kid[0]),
-            "path_b": Path(args.kid[1]),
-            "output": Path(args.kid[2]) if len(args.kid) == 3 else None,
+            "path_bs": [Path(p) for p in args.kid[1:]],
         }
 
     # Transform
@@ -197,14 +228,6 @@ def validate_args(args: argparse.Namespace) -> argparse.Namespace:
             Path(args.transform[0]),
             Path(args.transform[1]),
         ]
-
-    # CLIP
-    if args.clip is not None:
-        # If a string is provided, wrap it as Path; else keep None
-        if isinstance(args.clip, str):
-            args.clip = Path(args.clip)
-        else:
-            args.clip = None
 
     return args
 
