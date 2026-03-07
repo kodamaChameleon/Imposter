@@ -196,6 +196,20 @@ Duplicating these steps requires a complex setup process and a lot of patience g
 If you wish to replicate this portion of the study, the code for generating these additional test sets is provided for your convenience in `./bots` directory. 
 See [Social Media Bots](./bots/README.md) for more details.
 
+### D. Data Visualization
+
+**1. Normalization**  
+Normalize results into a single csv file:
+```bash
+python3 run.py --normalize path/to/acc0.txt path/to/ap.txt path/to/safe_results.pth_datasets.csv path/to/transforms.csv
+```
+
+**2. Graph/Tables**  
+For convenience, the KID, CLIP, and normalize test results from UFD and SAFE may be converted into tables and graph .png files using:
+```bash
+python3 run.py --graph path/to/results.csv --graph-type {KID, CLIP, or TEST}
+```
+
 ## ✨ Acknowledgements
 
 This project was made possible by:
