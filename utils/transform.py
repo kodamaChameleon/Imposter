@@ -180,7 +180,8 @@ class DatasetTransformer:
         Center-crop images by percentage and re-encode as JPEG.
         """
         w, h = img.size
-        keep = 1 - level / 100
+        keep = level / 100
+
         new_w, new_h = int(w * keep), int(h * keep)
 
         left = (w - new_w) // 2
@@ -220,8 +221,8 @@ class DatasetTransformer:
         return [100 - (i + 1) * delta for i in range(variations) if 100 - (i + 1) * delta > 0]
 
     def _levels_crop(self, variations, delta):
-        """Normalize cropping levels"""
-        return [(i + 1) * delta for i in range(variations) if (i + 1) * delta < 100]
+        """Normalize cropping levels around 100 (100 = no crop)."""
+        return [100 - (i + 1) * delta for i in range(variations) if 100 - (i + 1) * delta > 0]
 
     def _levels_symmetric(self, variations, delta):
         """
