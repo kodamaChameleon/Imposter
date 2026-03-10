@@ -166,7 +166,7 @@ def _graph_test_accuracy_vs_level(df: pd.DataFrame, csv_path: Path):
             plt.tight_layout()
 
             out = csv_path.with_name(
-                f"acc_vs_level_{dataset}_{transform}.png"
+                f"{csv_path.stem}_acc_vs_level_{dataset}_{transform}.png"
             )
             plt.savefig(out, dpi=300)
             plt.close()
@@ -292,7 +292,7 @@ def _graph_test_accuracy_vs_lpips(df: pd.DataFrame, csv_path: Path):
             plt.tight_layout()
 
             out = csv_path.with_name(
-                f"acc_vs_lpips_{det_name}_{dataset}.png"
+                f"{csv_path.stem}_acc_vs_lpips_{det_name}_{dataset}.png"
             )
             plt.savefig(out, dpi=300)
             plt.close()
