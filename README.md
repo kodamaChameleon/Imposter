@@ -185,10 +185,14 @@ Outputs a csv report including average LPIPS scores across a given transformatio
 - contrast
 - saturation
 
-Transform options defaults to all with 6 variations and a delta of 10. Example usage:
+Transform options defaults to `all` with `6 10 100` as variations, delta, and starting point. Example usage:
 ```bash
-python3 run.py --transform --transform-opt all --transform-level 3 5
+python3 run.py --transform --transform-opt crop --transform-level 3 5
 ```
+
+> [!NOTE]
+> Transform-level starting point defaults to 100 if not specified.
+> The total transform level must not be zero or negative, `start - (variation * delta) > 0`.
 
 **2. By Platform**  
 For demonstrating the real world effects of platform specific transformations, my analysis includes images that have been uploaded, processed, and downloaded again through a limited subset of social media platforms. 
