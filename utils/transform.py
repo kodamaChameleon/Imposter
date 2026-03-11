@@ -41,13 +41,20 @@ class LPIPSScorer:
             T.Normalize([0.5] * 3, [0.5] * 3),
         ])
 
-    def _load(self, path: Path):
-        img = Image.open(path).convert("RGB")
+    def tensorize(self, img):
         return self.tf(img).unsqueeze(0).to(self.device)
 
     @torch.no_grad()
-    def score(self, ref: Path, img: Path) -> float:
-        return self.model(self._load(ref), self._load(img)).item()
+    def score_batch(self, refs, imgs):
+
+        refs = torch.cat(refs)
+        imgs = torch.cat(imgs)
+
+        scores = self.model(refs, imgs)
+
+        assert refs.device == imgs.device
+
+        return scores.flatten().cpu().tolist()
 
 
 # ------------------------------------------------------------------
@@ -111,12 +118,15 @@ class DatasetTransformer:
     # Execution engine
     # ------------------------------------------------------------------
 
-    def _run_levels(self, name, levels, transform_fn):
+    def _run_levels(self, name, levels, transform_fn, batch_size: int = 32):
         """
         Generic wrapper for running transformations
         """
 
         for level in levels:
+            
+            ref_batch = []
+            img_batch = []
 
             lpips_sum = 0.0
             count = 0
@@ -136,16 +146,29 @@ class DatasetTransformer:
 
                         self._save_jpeg(out_img, out_path, quality)
 
-                        score = self.scorer.score(
-                            img_path,
-                            out_path.with_suffix(".jpg")
-                        )
+                        ref_batch.append(self.scorer.tensorize(img))
+                        img_batch.append(self.scorer.tensorize(out_img))
 
-                        lpips_sum += score
-                        count += 1
+                        if len(ref_batch) == batch_size:
+
+                            scores = self.scorer.score_batch(ref_batch, img_batch)
+
+                            for s in scores:
+                                lpips_sum += s
+                                count += 1
+
+                            ref_batch.clear()
+                            img_batch.clear()
 
                 except Exception as e:
                     print(f"[skip] {img_path}: {e}")
+                
+            if ref_batch:
+                scores = self.scorer.score_batch(ref_batch, img_batch)
+
+                for s in scores:
+                    lpips_sum += s
+                    count += 1
 
             mean_lpips = lpips_sum / count if count else 0.0
 
