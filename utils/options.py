@@ -167,9 +167,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--normalize",
         nargs="+",
-        type=Path,
-        metavar="PATH",
-        help="Path to results data to normalize (<pathA> <pathB> <pathC> ...)"
+        metavar="KEY:TYPE:PATH",
+        help=(
+            "Normalization inputs in format KEY:TYPE:PATH\n"
+            "TYPE must be 'results' or 'transform'\n"
+            "Example:\n"
+            "--normalize UFD:results:ufd.csv SAFE:results:safe.csv T:transform:transforms.csv"
+        ),
     )
     parser.add_argument(
         "--normalized-output",
@@ -238,6 +242,43 @@ def validate_args(args: argparse.Namespace) -> argparse.Namespace:
         )
 
     args.transform_level = (x_var, x_delta, x_start)
+
+    # Results normalization
+    if args.normalize:
+        parsed = []
+
+        for item in args.normalize:
+            try:
+                key, typ, path_str = item.split(":", 2)
+            except ValueError:
+                raise ValueError(
+                    f"--normalize expects KEY:TYPE:PATH → got '{item}'"
+                )
+
+            typ = typ.lower()
+
+            if typ not in {"results", "transform"}:
+                raise ValueError(
+                    f"Invalid normalize type '{typ}' (must be 'results' or 'transform')"
+                )
+
+            path = Path(path_str)
+
+            parsed.append((key, typ, path))
+
+        # sanity checks
+        types = [t for _, t, _ in parsed]
+
+        if "results" not in types:
+            raise ValueError("--normalize requires at least one results input")
+
+        if "transform" not in types:
+            raise ValueError("--normalize requires one transform input")
+
+        if types.count("transform") > 1:
+            raise ValueError("--normalize supports only one transform input")
+
+        args.normalize = parsed
 
     return args
 

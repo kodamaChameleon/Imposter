@@ -1,7 +1,7 @@
 """
 -*- coding: utf-8 -*-
 Name:        utils/normalize.py
-Purpose:     Format and merge results data.
+Purpose:     Build unified results dataset with detector + transforms.
 Author:      Kodama Chameleon <contact@kodamachameleon.com>
 """
 from pathlib import Path
@@ -9,218 +9,173 @@ import pandas as pd
 
 
 # ---------------------------------------------------------------------
-# Helpers
+# Constants
 # ---------------------------------------------------------------------
+
 MERGE_KEYS = ["base_dataset", "transform", "level"]
 
+EXPECTED_COLUMNS = {
+    "testset","accuracy","avg_precision","precision",
+    "recall","f1","roc_auc","tn","fp","fn","tp"
+}
 
-def _is_UFD_acc(text: str) -> bool:
-    parts = text.split()
+ROUND_COLS = [
+    "accuracy", "avg_precision", "precision",
+    "recall", "f1", "roc_auc"
+]
 
-    try:
-        float(parts[1])
-        float(parts[2])
-        float(parts[3])
-        return True
-    except ValueError:
-        return False
+# ---------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------
+
+def _round_metrics(df: pd.DataFrame, decimals: int = 2) -> pd.DataFrame:
+    cols = [c for c in ROUND_COLS if c in df.columns]
+    df[cols] = df[cols].round(decimals)
+    return df
 
 
 def _parse_dataset_name(name: str) -> dict:
-    """
-    FLUX1_dev-compression-35 → 
-    base=FLUX1_dev, transform=compression, level=35
-    """
     parts = name.split("-")
 
     if len(parts) == 1:
-        return {"base_dataset": name, "transform": None, "level": None}
-
-    base = parts[0]
-    transform = parts[1]
-    level = parts[2] if len(parts) > 2 else None
+        return {
+            "base_dataset": name,
+            "transform": "none",
+            "level": 100,
+        }
 
     return {
-        "base_dataset": base,
-        "transform": transform,
-        "level": pd.to_numeric(level, errors="coerce"),
+        "base_dataset": parts[0],
+        "transform": parts[1],
+        "level": pd.to_numeric(parts[2], errors="coerce") if len(parts) > 2 else None,
     }
+
+
+def _load_results(path: Path, detector: str) -> pd.DataFrame:
+    """
+    Load UFD / SAFE results with robust header detection.
+    """
+
+    # -----------------------------
+    # locate header row
+    # -----------------------------
+    with path.open("r", encoding="utf-8") as f:
+        lines = f.readlines()
+
+    header_idx = None
+    for i, line in enumerate(lines):
+        cols = [c.strip().lower() for c in line.split(",")]
+        if EXPECTED_COLUMNS.issubset(set(cols)):
+            header_idx = i
+            break
+
+    if header_idx is None:
+        raise ValueError(f"[normalize] Header not found → {path}")
+
+    # -----------------------------
+    # read CSV
+    # -----------------------------
+    df = pd.read_csv(path, skiprows=header_idx)
+    df.columns = [c.strip().lower() for c in df.columns]
+
+    # -----------------------------
+    # parse dataset structure
+    # -----------------------------
+    parsed = df["testset"].map(_parse_dataset_name).apply(pd.Series)
+    parsed.columns = MERGE_KEYS
+
+    df = pd.concat([df, parsed], axis=1)
+
+    # -----------------------------
+    # remove aggregate rows
+    # -----------------------------
+    df["base_dataset"] = df["base_dataset"].astype(str).str.strip()
+
+    df = df[
+        ~df["base_dataset"].str.lower().isin({
+            "mean", "avg", "average"
+        })
+    ]
+
+    # normalize types BEFORE merge
+    df["level"] = pd.to_numeric(df["level"], errors="coerce")
+
+    # detector label
+    df["detector"] = detector
+
+    return df
 
 
 def _load_transform_metrics(path: Path) -> pd.DataFrame:
     df = pd.read_csv(path)
 
     df = df.rename(columns={"dataset": "base_dataset"})
+
     df["level"] = pd.to_numeric(df["level"], errors="coerce")
+    df["transform"] = df["transform"].fillna("none")
 
     return df[["base_dataset", "transform", "level", "lpips", "images"]]
 
 
-def _load_safe(path: Path) -> pd.DataFrame:
-    # --- find header row ---
-    with path.open("r", encoding="utf-8") as f:
-        lines = f.readlines()
+def _attach_transforms(df: pd.DataFrame, transforms: pd.DataFrame) -> pd.DataFrame:
+    """
+    Merge LPIPS + images into results.
+    """
 
-    header_idx = None
-    for i, line in enumerate(lines):
-        if "testset" in line.lower() and "accuracy" in line.lower():
-            header_idx = i
-            break
-
-    if header_idx is None:
-        raise ValueError(f"[normalize] SAFE header not found → {path}")
-
-    df = pd.read_csv(path, skiprows=header_idx)
-    df.columns = [c.strip().lower() for c in df.columns]
-
-    parsed = df["testset"].map(_parse_dataset_name).apply(pd.Series)
-    parsed.columns = MERGE_KEYS
-
-    out = pd.concat([parsed, df], axis=1)
-
-    # Remove aggregate rows like "mean"
-    out["base_dataset"] = out["base_dataset"].astype(str).str.strip()
-    out = out[~out["base_dataset"].str.lower().isin({"mean", "avg", "average"})]
-
-    acc = out.copy()
-    acc["SAFE_accuracy"] = acc["accuracy"]
-
-    prec = out.copy()
-    prec["SAFE_precision"] = prec["avg precision"]
-
-    return pd.merge(
-        acc[
-            ["base_dataset", "transform", "level", "SAFE_accuracy"]
-        ],
-        prec[
-            ["base_dataset", "transform", "level", "SAFE_precision"]
-        ],
+    df = df.merge(
+        transforms,
         on=MERGE_KEYS,
-        how="outer",
+        how="left",
     )
 
-
-def _load_ufd_accuracy(path: Path) -> pd.DataFrame:
-    rows = []
-
-    for line in path.read_text().splitlines():
-        if not line.strip():
-            continue
-
-        name, values = line.split(":")
-        _, _, acc_avg = map(float, values.split())
-
-        parsed = _parse_dataset_name(name.strip())
-
-        rows.append(
-            {
-                **parsed,
-                "UFD_accuracy": acc_avg,
-            }
-        )
-
-    return pd.DataFrame(rows)
-
-
-def _load_ufd_precision(path: Path) -> pd.DataFrame:
-    rows = []
-
-    for line in path.read_text().splitlines():
-        if not line.strip():
-            continue
-
-        name, value = line.split(":")
-        parsed = _parse_dataset_name(name.strip())
-
-        rows.append(
-            {
-                **parsed,
-                "UFD_precision": float(value.strip()),
-            }
-        )
-
-    return pd.DataFrame(rows)
-
-
-def _detect_and_load(path: Path) -> pd.DataFrame:
-
-    # Read head to determine file type
-    with path.open() as f:
-        head = f.read(2048).lower()
-
-    if path.suffix == ".csv" and "lpips" in head:
-        return _load_transform_metrics(path)
-
-    if path.suffix == ".csv" and "avg precision" in head:
-        return _load_safe(path)
-
-    if path.suffix == ".txt" and _is_UFD_acc(head):
-        return _load_ufd_accuracy(path)
-
-    if path.suffix == ".txt":
-        return _load_ufd_precision(path)
-
-    raise ValueError(f"[normalize] Unknown file type → {path}")
-
-
-def _merge_frames(frames: list[pd.DataFrame]) -> pd.DataFrame:
-    if not frames:
-        return pd.DataFrame()
-
-    out = frames[0]
-    for df in frames[1:]:
-        out = pd.merge(out, df, on=MERGE_KEYS, how="outer")
-    return out
-
-
-def _finalize_normalized(master: pd.DataFrame) -> pd.DataFrame:
-    df = master.copy()
-
-    # Rename base_dataset → dataset
-    df = df.rename(columns={"base_dataset": "dataset"})
-
-    # Set lpips values to 0 for originals
-    df["transform"] = df["transform"].fillna("none")
+    # originals → lpips = 0
     df["lpips"] = df["lpips"].fillna(0)
 
-    # Add image counts to originals
-    if "images" in df.columns:
-        df["images"] = (
-            df.groupby("dataset")["images"]
-            .transform("max")
-        )
-    
-    # Add level to originals
-    orig_mask = (df["transform"] == "none") & (df["level"].isna())
-    df.loc[orig_mask, "level"] = 100
+    # propagate image counts per dataset
+    df["images"] = (
+        df.groupby("base_dataset")["images"]
+        .transform("max")
+    )
 
-    # Images → integer
-    if "images" in df.columns:
-        df["images"] = pd.to_numeric(df["images"], errors="coerce").astype("Int64")
+    return df
 
-    # Column ordering
+
+def _finalize(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Final schema cleanup.
+    """
+
+    df = df.rename(columns={"base_dataset": "dataset"})
+
+    # column ordering
     preferred = [
-        "dataset",
-        "transform",
-        "level",
-        "UFD_accuracy",
-        "UFD_precision",
-        "SAFE_accuracy",
-        "SAFE_precision",
-        "lpips",
-        "images",
+        "dataset", "transform", "level", "detector",
+        "accuracy", "avg_precision", "precision",
+        "recall", "f1", "roc_auc",
+        "tn", "fp", "fn", "tp",
+        "lpips", "images",
     ]
 
     cols = [c for c in preferred if c in df.columns]
-    df = df[cols]
 
-    return df.sort_values(["dataset", "transform", "level"])
+    return df[cols].sort_values(
+        ["dataset", "detector", "transform", "level"]
+    )
 
 
-def _build_average_dataset(df: pd.DataFrame) -> pd.DataFrame:
-    work = df.copy()
+def _build_average(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Build weighted average rows across datasets.
+    """
 
-    group_cols = ["transform", "level"]
+    group_cols = ["detector", "transform", "level"]
+
+    metric_cols = [
+        "accuracy", "avg_precision", "precision",
+        "recall", "f1", "roc_auc", "lpips"
+    ]
+
+    count_cols = ["tn", "fp", "fn", "tp", "images"]
 
     def wmean(series, weights):
         mask = series.notna() & weights.notna()
@@ -229,23 +184,23 @@ def _build_average_dataset(df: pd.DataFrame) -> pd.DataFrame:
         return (series[mask] * weights[mask]).sum() / weights[mask].sum()
 
     grouped = (
-        work.groupby(group_cols, dropna=False)
+        df.groupby(group_cols, dropna=False)
         .apply(
-            lambda g: pd.Series(
-                {
-                    "UFD_accuracy": wmean(g["UFD_accuracy"], g["images"]),
-                    "UFD_precision": wmean(g["UFD_precision"], g["images"]),
-                    "SAFE_accuracy": wmean(g["SAFE_accuracy"], g["images"]),
-                    "SAFE_precision": wmean(g["SAFE_precision"], g["images"]),
-                    "lpips": wmean(g["lpips"], g["images"]),
-                    "images": g["images"].sum(min_count=1),
+            lambda g: pd.Series({
+                **{
+                    col: wmean(g[col], g["images"])
+                    for col in metric_cols
+                },
+                **{
+                    col: g[col].sum(min_count=1)
+                    for col in count_cols
                 }
-            )
+            })
         )
         .reset_index()
     )
 
-    grouped.insert(0, "dataset", "AVERAGE")
+    grouped["dataset"] = "average"
 
     return grouped
 
@@ -254,33 +209,63 @@ def _build_average_dataset(df: pd.DataFrame) -> pd.DataFrame:
 # Dispatcher
 # ---------------------------------------------------------------------
 
-def run_normalization(
-    input_paths: list[Path],
-    output_path: Path,
-) -> pd.DataFrame:
+def run_normalization(input_paths, output_path):
+    print("\n[normalize] Loading inputs...")
 
-    print("\n[normalize] Loading inputs…")
+    result_frames = []
+    transform_frames = []
 
-    frames = []
+    # -----------------------------
+    # ingest inputs
+    # -----------------------------
+    for key, typ, path in input_paths:
+        print(f"[normalize] → {path} ({key}, {typ})")
 
-    for path in input_paths:
-        print(f"[normalize] → {path}")
-        frames.append(_detect_and_load(path))
+        if typ == "results":
+            result_frames.append(_load_results(path, key))
 
-    master = _merge_frames(frames)
-    master = _finalize_normalized(master)
+        elif typ == "transform":
+            transform_frames.append(_load_transform_metrics(path))
 
-    master.to_csv(output_path, index=False)
+        else:
+            raise ValueError(f"Unknown input type → {typ}")
 
-    print(f"\n[ok] normalized CSV saved → {output_path}")
-    print(f"[normalize] rows: {len(master)}")
+    if not result_frames:
+        raise ValueError("[normalize] No result files provided")
 
-    # build summary
-    avg = _build_average_dataset(master)
+    if not transform_frames:
+        raise ValueError("[normalize] No transform file provided")
 
-    summary_path = output_path.with_name(output_path.stem + "_summary.csv")
-    avg.to_csv(summary_path, index=False)
+    if len(transform_frames) > 1:
+        raise ValueError("[normalize] Multiple transform files provided")
 
-    print(f"[ok] summary CSV saved → {summary_path}")
+    # -----------------------------
+    # combine
+    # -----------------------------
+    df = pd.concat(result_frames, ignore_index=True)
+    transforms = transform_frames[0]
 
-    return master
+    print("[normalize] Attaching transforms...")
+    df = _attach_transforms(df, transforms)
+
+    print("[normalize] Finalizing dataset...")
+    df = _finalize(df)
+
+    print("[normalize] Building averages...")
+    avg = _build_average(df)
+
+    out = pd.concat([df, avg], ignore_index=True)
+
+    out = _round_metrics(out, 2)
+    if "images" in out.columns:
+        out["images"] = (
+            pd.to_numeric(out["images"], errors="coerce")
+            .round()
+            .astype("Int64")
+        )
+    out.to_csv(output_path, index=False)
+
+    print(f"\n[ok] saved → {output_path}")
+    print(f"[normalize] rows: {len(out)}")
+
+    return out
