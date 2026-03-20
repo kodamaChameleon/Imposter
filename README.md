@@ -105,7 +105,7 @@ python3 run.py --split
 
 **UniversalFakeDetect**
 
-Use the original [UniversalFakeDetect](https://github.com/WisconsinAIVision/UniversalFakeDetect) to train the model. 
+It is recommended to use the [UniversalFakeDetect Fork](https://github.com/kodamaChameleon/UniversalFakeDetect) for training and testing. 
 Copy the train and val datasets from Imposter into a new folder in the UniversalFakeDetect datasets. 
 Your dataset structure should look something like:
 ```
@@ -140,14 +140,14 @@ ls -1 /path/to/test/ | awk '{
 }' > formatted_test_paths.txt
 ```
 
-> [!NOTE]
-> The original UniversalFakeDetect repo has missing dependencies and several additional configuration steps to customize for our use case.
-> For your convenience, I have included a [UniversalFakeDetect Fork](https://github.com/kodamaChameleon/UniversalFakeDetect) with a number of the changes already made.
-> Be sure to update the hardcoded paths in `data/datasets.py` and `dataset_paths.py`.
+> [!IMPORTANT]
+> In addition to ease of setup and configuration, 
+> the [UniversalFakeDetect Fork](https://github.com/kodamaChameleon/UniversalFakeDetect) includes additional output metrics useful for analyzing results.
+> I also used **resize** instead of center cropping which removes critical portions of the image for detection.
 
 **SAFE**
 
-Use [SAFE](https://github.com/Ouxiang-Li/SAFE) to train the model. 
+Use [SAFE Fork](https://github.com/kodamaChameleon/SAFE) for training and testing which has been customized for this project. 
 Copy the train and val datasets from Imposter into a new folder in the SAFE datasets. 
 Your dataset structure should look something like:
 ```
@@ -199,6 +199,23 @@ For demonstrating the real world effects of platform specific transformations, m
 Duplicating these steps requires a complex setup process and a lot of patience given API rate limitations. 
 If you wish to replicate this portion of the study, the code for generating these additional test sets is provided for your convenience in `./bots` directory. 
 See [Social Media Bots](./bots/README.md) for more details.
+
+### E. Results Display
+
+> #TODO
+
+## ✒️ Citing
+
+```bibtex
+@software{kodamaChameleon,
+  author       = {Chameleon, Kodama},
+  title        = {Imposter: Failure Analysis of Deepfake Image Detection In-the-Wild},
+  year         = {2026},
+  url          = {https://github.com/kodamaChameleon/Imposter},
+  institution  = {Georgia Institute of Technology},
+  license      = {MIT}
+}
+```
 
 ## ✨ Acknowledgements
 
