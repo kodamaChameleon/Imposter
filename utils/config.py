@@ -107,9 +107,6 @@ class DefaultOptions:
     transform_level: list[int] = field(default_factory=lambda: [6, 10, 100])
     transform_csv: Path = root / "transforms.csv"
 
-    graph_choices: list[str] = field(default_factory=lambda: [
-        "CLIP", "KID", "TEST"
-    ])
     normalized_output: Path = root / "test_results.csv"
 
 

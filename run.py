@@ -103,8 +103,7 @@ def main() -> int:
     
     if args.graph:
         results = run_graph(
-            path=args.graph,
-            graph_type=args.graph_type,
+            csv_path=args.graph,
         )
 
         print("[ok] graph complete")

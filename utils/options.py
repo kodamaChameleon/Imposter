@@ -158,13 +158,6 @@ def build_parser() -> argparse.ArgumentParser:
 
     parser.add_argument("--graph", type=Path)
     parser.add_argument(
-        "--graph-type",
-        type=str,
-        choices=DEFAULTS.graph_choices,
-        help=f"Data type of results file \
-            (OPTIONS: {' '.join(DEFAULTS.graph_choices)})"
-    )
-    parser.add_argument(
         "--normalize",
         nargs="+",
         metavar="KEY:TYPE:PATH",
