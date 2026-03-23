@@ -104,6 +104,7 @@ def main() -> int:
     if args.graph:
         results = run_graph(
             csv_path=args.graph,
+            metrics=args.graph_metrics
         )
 
         print("[ok] graph complete")

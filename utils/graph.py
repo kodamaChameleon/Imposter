@@ -15,8 +15,10 @@ class GraphGenerator:
     MARKERSIZE = 3
     LINEWIDTH = 2
 
-    def __init__(self, csv_path: Path):
+    def __init__(self, csv_path: Path, level_origin: float = 100):
         self.csv_path = csv_path
+        self.level_origin = level_origin
+
         self.df = pd.read_csv(csv_path)
 
         self.base = self.df[self.df["transform"] == "none"]
@@ -26,9 +28,14 @@ class GraphGenerator:
     # Public API
     # ------------------------------------------------------------------
 
-    def run(self):
-        self._graph_accuracy_vs_level()
-        self._graph_accuracy_vs_lpips()
+    def run(self, metrics: list):
+        for metric in metrics:
+            try:
+                self._graph_metric_vs_lpips(metric)
+                print(f"[ok] {metric} graphs complete")
+            except ValueError as e:
+                print(f"[error] {e}")
+                continue
 
     # ------------------------------------------------------------------
     # Helpers
@@ -53,59 +60,29 @@ class GraphGenerator:
             linewidth=self.LINEWIDTH,
         )
 
-    def _with_origin(self, df, x_col, y_col, origin_val):
+    def _with_origin(self, df, y_col, origin_val):
         return pd.concat([
-            pd.DataFrame({x_col: [0 if x_col == "lpips" else 100], y_col: [origin_val]}),
-            df[[x_col, y_col]],
-        ]).sort_values(x_col)
+            pd.DataFrame({"lpips": [0], y_col: [origin_val]}),
+            df[["lpips", y_col]],
+        ]).sort_values("lpips")
+
+    def _split_directional(self, tsub: pd.DataFrame):
+        has_lower = (tsub["level"] < self.level_origin).any()
+        has_upper = (tsub["level"] > self.level_origin).any()
+
+        if has_lower and has_upper:
+            return [
+                ("↓", tsub[tsub["level"] < self.level_origin]),
+                ("↑", tsub[tsub["level"] > self.level_origin]),
+            ]
+
+        return [(None, tsub)]
 
     # ------------------------------------------------------------------
-    # Graphs
+    # Core graph
     # ------------------------------------------------------------------
 
-    def _graph_accuracy_vs_level(self):
-        for dataset in self.work["dataset"].unique():
-            dsub = self.work[self.work["dataset"] == dataset]
-            base_d = self.base[self.base["dataset"] == dataset]
-
-            for transform in dsub["transform"].unique():
-                tsub = dsub[dsub["transform"] == transform]
-
-                self._new_figure()
-
-                for i, detector in enumerate(tsub["detector"].unique()):
-                    det_sub = tsub[tsub["detector"] == detector].sort_values("level")
-
-                    if not det_sub["accuracy"].notna().any():
-                        continue
-
-                    origin_row = base_d[base_d["detector"] == detector]
-                    if origin_row.empty:
-                        continue
-
-                    origin_val = origin_row["accuracy"].iloc[0]
-
-                    curve = self._with_origin(det_sub, "level", "accuracy", origin_val)
-
-                    self._plot_curve(
-                        curve["level"],
-                        curve["accuracy"],
-                        detector,
-                        i,
-                    )
-
-                plt.gca().invert_xaxis()
-                plt.title(f"{dataset.upper().replace('_', ' ')} – {transform.upper()}\nAccuracy vs Level")
-                plt.xlabel("level")
-                plt.ylabel("accuracy (%)")
-                plt.legend()
-                plt.tight_layout()
-
-                self._save(f"acc_vs_level_{dataset}_{transform}")
-
-    def _graph_accuracy_vs_lpips(self):
-        directional = {"contrast", "saturation"}
-
+    def _graph_metric_vs_lpips(self, y_col: str):
         for dataset in self.work["dataset"].unique():
             dsub = self.work[self.work["dataset"] == dataset]
             base_d = self.base[self.base["dataset"] == dataset]
@@ -117,51 +94,45 @@ class GraphGenerator:
                 if base_det.empty or det_sub.empty:
                     continue
 
+                if y_col not in det_sub.columns:
+                    raise ValueError(f"Metric '{y_col}' not found in CSV columns")
+
                 self._new_figure()
                 curve_idx = 0
-                origin_val = base_det["accuracy"].iloc[0]
+
+                origin_val = base_det[y_col].iloc[0]
 
                 for transform in det_sub["transform"].unique():
                     tsub = det_sub[det_sub["transform"] == transform]
 
-                    if not tsub["accuracy"].notna().any():
+                    if not tsub[y_col].notna().any():
                         continue
 
-                    if transform in directional:
-                        branches = [
-                            ("↓", tsub[tsub["level"] <= 100]),
-                            ("↑", tsub[tsub["level"] >= 100]),
-                        ]
+                    splits = self._split_directional(tsub)
 
-                        for suffix, branch in branches:
-                            branch = branch.sort_values("lpips")
-                            if branch.empty:
-                                continue
+                    for suffix, subset in splits:
+                        subset = subset.sort_values("lpips")
+                        if subset.empty:
+                            continue
 
-                            curve = self._with_origin(branch, "lpips", "accuracy", origin_val)
+                        curve = self._with_origin(subset, y_col, origin_val)
 
-                            self._plot_curve(
-                                curve["lpips"],
-                                curve["accuracy"],
-                                f"{transform} {suffix}",
-                                curve_idx,
-                            )
-                            curve_idx += 1
-                    else:
-                        tsub_sorted = tsub.sort_values("lpips")
-                        curve = self._with_origin(tsub_sorted, "lpips", "accuracy", origin_val)
+                        label = transform if suffix is None else f"{transform} {suffix}"
 
                         self._plot_curve(
                             curve["lpips"],
-                            curve["accuracy"],
-                            transform,
+                            curve[y_col],
+                            label,
                             curve_idx,
                         )
                         curve_idx += 1
 
-                plt.title(f"{dataset.upper().replace('_', ' ')} – {detector}\nAccuracy vs LPIPS")
+                plt.title(
+                    f"{detector} – {dataset.upper().replace('_', ' ')}\n"
+                    f"{y_col.replace('_', ' ').title()} vs LPIPS"
+                )
                 plt.xlabel("LPIPS")
-                plt.ylabel("accuracy (%)")
+                plt.ylabel(y_col.replace("_", " "))
                 plt.legend()
 
                 ax = plt.gca()
@@ -171,12 +142,12 @@ class GraphGenerator:
 
                 plt.tight_layout()
 
-                self._save(f"acc_vs_lpips_{detector}_{dataset}")
+                self._save(f"{y_col}_vs_lpips_{detector}_{dataset}")
 
 
 # ---------------------------------------------------------------------
 # Dispatcher
 # ---------------------------------------------------------------------
 
-def run_graph(csv_path: Path):
-    GraphGenerator(csv_path).run()
+def run_graph(csv_path: Path, metrics: list):
+    GraphGenerator(csv_path).run(metrics=metrics)

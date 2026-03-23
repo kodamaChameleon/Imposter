@@ -109,6 +109,8 @@ class DefaultOptions:
 
     normalized_output: Path = root / "test_results.csv"
 
+    default_metrics: list[str] = field(default_factory=lambda: ["accuracy", "avg_precision"])
+
 
 @dataclass(frozen=True)
 class KaggleConfig:

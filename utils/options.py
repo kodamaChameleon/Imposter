@@ -158,6 +158,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     parser.add_argument("--graph", type=Path)
     parser.add_argument(
+        "--graph-metrics",
+        nargs="+",
+        type=str,
+        default=DEFAULTS.default_metrics,
+        help=f"Metrics to graph. Must be valid csv headers. (default: {' '.join(DEFAULTS.default_metrics)})."
+    )
+    parser.add_argument(
         "--normalize",
         nargs="+",
         metavar="KEY:TYPE:PATH",
