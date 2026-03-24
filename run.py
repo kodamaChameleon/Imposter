@@ -15,7 +15,7 @@ from utils import (
     run_transform,
     parse_args,
     run_graph,
-    run_normalization
+    run_aggregation
 )
 
 
@@ -109,13 +109,13 @@ def main() -> int:
 
         print("[ok] graph complete")
     
-    if args.normalize is not None:
-        results = run_normalization(
-            input_paths=args.normalize,
-            output_path=args.normalized_output
+    if args.aggregate is not None:
+        results = run_aggregation(
+            input_paths=args.aggregate,
+            output_path=args.aggregated_output
         )
 
-        print(f"[ok] normalized results saved to {args.normalized_output}")
+        print(f"[ok] aggregated results saved to {args.aggregated_output}")
 
     return 0
 

@@ -165,21 +165,21 @@ def build_parser() -> argparse.ArgumentParser:
         help=f"Metrics to graph. Must be valid csv headers. (default: {' '.join(DEFAULTS.default_metrics)})."
     )
     parser.add_argument(
-        "--normalize",
+        "--aggregate",
         nargs="+",
         metavar="KEY:TYPE:PATH",
         help=(
             "Normalization inputs in format KEY:TYPE:PATH\n"
             "TYPE must be 'results' or 'transform'\n"
             "Example:\n"
-            "--normalize UFD:results:ufd.csv SAFE:results:safe.csv T:transform:transforms.csv"
+            "--aggregate UFD:results:ufd.csv SAFE:results:safe.csv T:transform:transforms.csv"
         ),
     )
     parser.add_argument(
-        "--normalized-output",
+        "--aggregated-output",
         type=Path,
-        default=DEFAULTS.normalized_output,
-        help="Path to store normalization output.",
+        default=DEFAULTS.aggregated_output,
+        help="Path to store aggregation output.",
     )
 
     return parser
@@ -243,23 +243,23 @@ def validate_args(args: argparse.Namespace) -> argparse.Namespace:
 
     args.transform_level = (x_var, x_delta, x_start)
 
-    # Results normalization
-    if args.normalize:
+    # Results aggregation
+    if args.aggregate:
         parsed = []
 
-        for item in args.normalize:
+        for item in args.aggregate:
             try:
                 key, typ, path_str = item.split(":", 2)
             except ValueError:
                 raise ValueError(
-                    f"--normalize expects KEY:TYPE:PATH → got '{item}'"
+                    f"--aggregate expects KEY:TYPE:PATH → got '{item}'"
                 )
 
             typ = typ.lower()
 
             if typ not in {"results", "transform"}:
                 raise ValueError(
-                    f"Invalid normalize type '{typ}' (must be 'results' or 'transform')"
+                    f"Invalid aggregate type '{typ}' (must be 'results' or 'transform')"
                 )
 
             path = Path(path_str)
@@ -270,15 +270,15 @@ def validate_args(args: argparse.Namespace) -> argparse.Namespace:
         types = [t for _, t, _ in parsed]
 
         if "results" not in types:
-            raise ValueError("--normalize requires at least one results input")
+            raise ValueError("--aggregate requires at least one results input")
 
         if "transform" not in types:
-            raise ValueError("--normalize requires one transform input")
+            raise ValueError("--aggregate requires one transform input")
 
         if types.count("transform") > 1:
-            raise ValueError("--normalize supports only one transform input")
+            raise ValueError("--aggregate supports only one transform input")
 
-        args.normalize = parsed
+        args.aggregate = parsed
 
     return args
 

@@ -107,7 +107,7 @@ class DefaultOptions:
     transform_level: list[int] = field(default_factory=lambda: [6, 10, 100])
     transform_csv: Path = root / "transforms.csv"
 
-    normalized_output: Path = root / "test_results.csv"
+    aggregated_output: Path = root / "test_results.csv"
 
     default_metrics: list[str] = field(default_factory=lambda: ["accuracy", "avg_precision"])
 

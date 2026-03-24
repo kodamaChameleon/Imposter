@@ -13,7 +13,7 @@ from .split import run_split
 from .transform import run_transform
 from .options import parse_args
 from .graph import run_graph
-from .normalize import run_normalization
+from .aggregate import run_aggregation
 
 __all__ = [
     "make_config",
@@ -26,5 +26,5 @@ __all__ = [
     "run_transform",
     "parse_args",
     "run_graph",
-    "run_normalization"
+    "run_aggregation"
 ]

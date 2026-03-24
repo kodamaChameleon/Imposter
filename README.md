@@ -205,13 +205,13 @@ See [Social Media Bots](./bots/README.md) for more details.
 **1. Data Aggregation**  
 *If* you used the [SAFE Fork](https://github.com/kodamaChameleon/SAFE) and [SAFE Fork](https://github.com/kodamaChameleon/SAFE) for testing, you should now have three separate csv files: UniversalFakeDetect results, SAFE results, and the transforms file. [Imposter](https://github.com/kodamaChameleon/Imposter) includes a convenient utility for merging these three csv files into a single results file for data analysis and display. It also calculates the averages across all datasets which is listed as its own dataset.
 ```bash
-python3 run.py --normalize UFD:results:path/to/ufd.csv SAFE:results:path/to/safe.csv t:transform:path/to/transforms.csv
+python3 run.py --aggregate UFD:results:path/to/ufd.csv SAFE:results:path/to/safe.csv t:transform:path/to/transforms.csv
 ```
 
 > [!NOTE]
 > The syntax for parameters are:
-> - `--normalize {dataset1}:{type1}:{path1} {name2}:{type2}:{path2} {name3}:{type3}:{path3}`
-> - (optional) `--normalized-output path/to/aggregated_results.csv`
+> - `--aggregate {dataset1}:{type1}:{path1} {name2}:{type2}:{path2} {name3}:{type3}:{path3}`
+> - (optional) `--aggregated-output path/to/aggregated_results.csv`
 
 **2. Display Figures**  
 The graph feature creates multiple figures comparing specified metrics to LPIPS scores. The default metrics are accuracy and avg_precision. Use `--graph-metrics` to overide the default.

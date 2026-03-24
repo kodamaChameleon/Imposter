@@ -1,6 +1,6 @@
 """
 -*- coding: utf-8 -*-
-Name:        utils/normalize.py
+Name:        utils/aggregate.py
 Purpose:     Build unified results dataset with detector + transforms.
 Author:      Kodama Chameleon <contact@kodamachameleon.com>
 """
@@ -16,12 +16,12 @@ MERGE_KEYS = ["base_dataset", "transform", "level"]
 
 EXPECTED_COLUMNS = {
     "testset","accuracy","avg_precision","precision",
-    "recall","f1","roc_auc","tn","fp","fn","tp"
+    "recall","f1","roc-auc","tn","fp","fn","tp"
 }
 
 ROUND_COLS = [
     "accuracy", "avg_precision", "precision",
-    "recall", "f1", "roc_auc"
+    "recall", "f1", "roc-auc"
 ]
 
 # ---------------------------------------------------------------------
@@ -70,7 +70,7 @@ def _load_results(path: Path, detector: str) -> pd.DataFrame:
             break
 
     if header_idx is None:
-        raise ValueError(f"[normalize] Header not found → {path}")
+        raise ValueError(f"[aggregate] Header not found → {path}")
 
     # -----------------------------
     # read CSV
@@ -97,7 +97,7 @@ def _load_results(path: Path, detector: str) -> pd.DataFrame:
         })
     ]
 
-    # normalize types BEFORE merge
+    # aggregate types BEFORE merge
     df["level"] = pd.to_numeric(df["level"], errors="coerce")
 
     # detector label
@@ -151,7 +151,7 @@ def _finalize(df: pd.DataFrame) -> pd.DataFrame:
     preferred = [
         "dataset", "transform", "level", "detector",
         "accuracy", "avg_precision", "precision",
-        "recall", "f1", "roc_auc",
+        "recall", "f1", "roc-auc",
         "tn", "fp", "fn", "tp",
         "lpips", "images",
     ]
@@ -172,7 +172,7 @@ def _build_average(df: pd.DataFrame) -> pd.DataFrame:
 
     metric_cols = [
         "accuracy", "avg_precision", "precision",
-        "recall", "f1", "roc_auc", "lpips"
+        "recall", "f1", "roc-auc", "lpips"
     ]
 
     count_cols = ["tn", "fp", "fn", "tp", "images"]
@@ -209,8 +209,8 @@ def _build_average(df: pd.DataFrame) -> pd.DataFrame:
 # Dispatcher
 # ---------------------------------------------------------------------
 
-def run_normalization(input_paths, output_path):
-    print("\n[normalize] Loading inputs...")
+def run_aggregation(input_paths, output_path):
+    print("\n[aggregate] Loading inputs...")
 
     result_frames = []
     transform_frames = []
@@ -219,7 +219,7 @@ def run_normalization(input_paths, output_path):
     # ingest inputs
     # -----------------------------
     for key, typ, path in input_paths:
-        print(f"[normalize] → {path} ({key}, {typ})")
+        print(f"[aggregate] → {path} ({key}, {typ})")
 
         if typ == "results":
             result_frames.append(_load_results(path, key))
@@ -231,13 +231,13 @@ def run_normalization(input_paths, output_path):
             raise ValueError(f"Unknown input type → {typ}")
 
     if not result_frames:
-        raise ValueError("[normalize] No result files provided")
+        raise ValueError("[aggregate] No result files provided")
 
     if not transform_frames:
-        raise ValueError("[normalize] No transform file provided")
+        raise ValueError("[aggregate] No transform file provided")
 
     if len(transform_frames) > 1:
-        raise ValueError("[normalize] Multiple transform files provided")
+        raise ValueError("[aggregate] Multiple transform files provided")
 
     # -----------------------------
     # combine
@@ -245,13 +245,13 @@ def run_normalization(input_paths, output_path):
     df = pd.concat(result_frames, ignore_index=True)
     transforms = transform_frames[0]
 
-    print("[normalize] Attaching transforms...")
+    print("[aggregate] Attaching transforms...")
     df = _attach_transforms(df, transforms)
 
-    print("[normalize] Finalizing dataset...")
+    print("[aggregate] Finalizing dataset...")
     df = _finalize(df)
 
-    print("[normalize] Building averages...")
+    print("[aggregate] Building averages...")
     avg = _build_average(df)
 
     out = pd.concat([df, avg], ignore_index=True)
@@ -266,6 +266,6 @@ def run_normalization(input_paths, output_path):
     out.to_csv(output_path, index=False)
 
     print(f"\n[ok] saved → {output_path}")
-    print(f"[normalize] rows: {len(out)}")
+    print(f"[aggregate] rows: {len(out)}")
 
     return out
