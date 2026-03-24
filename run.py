@@ -45,9 +45,9 @@ def main() -> int:
         )
 
         for r in results:
-            print(f"[clip] dataset   : {r.dataset}")
-            print(f"[clip] num_images: {r.num_images}")
-            print(f"[clip] score     : {r.score:.6f}")
+            print(f"[clip] dataset   : {r.dataset_b}")
+            print(f"[clip] num_images: {r.num_images_b}")
+            print(f"[clip] kid_mean     : {r.kid_mean:.6f}")
 
         if args.kid_results:
             print(f"[ok] appended → {args.kid_results}")
