@@ -13,7 +13,7 @@ from typing import Dict, Iterable, Optional, Set, Tuple
 
 from PIL import Image, ImageOps
 
-from utils.config import JpegConfig, GENERATOR_CHOICES
+from src.config import JpegConfig, GENERATOR_CHOICES
 
 
 @dataclass

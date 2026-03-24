@@ -4,7 +4,7 @@ Name:        run.py
 Purpose:     Entry point for Imposter operations.
 Author:      Kodama Chameleon <contact@kodamachameleon.com>
 """
-from utils import (
+from src import (
     make_config,
     SplitConfig,
     fetch_all,
