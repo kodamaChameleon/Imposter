@@ -7,6 +7,7 @@ Author:      Kodama Chameleon <contact@kodamachameleon.com>
 from pathlib import Path
 
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 
 
@@ -29,6 +30,8 @@ class GraphGenerator:
     # ------------------------------------------------------------------
 
     def run(self, metrics: list):
+        self._graph_confusion_matrices(normalize=True)
+
         for metric in metrics:
             try:
                 self._graph_metric_vs_lpips(metric)
@@ -45,7 +48,7 @@ class GraphGenerator:
         plt.figure()
 
     def _save(self, suffix: str):
-        out = self.csv_path.with_name(f"{self.csv_path.stem}_{suffix}.png")
+        out = self.csv_path.with_name(f"{self.csv_path.stem}_{suffix.replace(' ', '_')}.png")
         plt.savefig(out, dpi=300)
         plt.close()
 
@@ -128,10 +131,10 @@ class GraphGenerator:
                         curve_idx += 1
 
                 plt.title(
-                    f"{detector} – {dataset.upper().replace('_', ' ')}\n"
-                    f"{y_col.replace('_', ' ').title()} vs LPIPS"
+                    f"{detector} – {dataset.replace('_', ' ')}\n"
+                    f"{y_col.replace('_', ' ')} vs LPIPS".upper()
                 )
-                plt.xlabel("LPIPS")
+                plt.xlabel("lpips")
                 plt.ylabel(y_col.replace("_", " "))
                 plt.legend()
 
@@ -143,6 +146,192 @@ class GraphGenerator:
                 plt.tight_layout()
 
                 self._save(f"{y_col}_vs_lpips_{detector}_{dataset}")
+
+    def _graph_confusion_matrices(self, normalize: bool = False, max_cols: int = 7):
+
+        origin = self.level_origin
+
+        for detector in self.df["detector"].unique():
+            for dataset in self.df["dataset"].unique():
+
+                subset_df = self.df[
+                    (self.df["detector"] == detector) &
+                    (self.df["dataset"] == dataset)
+                ]
+
+                if subset_df.empty:
+                    continue
+
+                # -----------------------------
+                # Build rows: (transform, direction)
+                # -----------------------------
+                rows = []
+
+                for transform in subset_df["transform"].unique():
+                    if transform == "none":
+                        continue
+
+                    tsub = subset_df[subset_df["transform"] == transform]
+
+                    has_lower = (tsub["level"] < origin).any()
+                    has_upper = (tsub["level"] > origin).any()
+
+                    if has_lower:
+                        rows.append((transform, "↓"))
+
+                    if has_upper:
+                        rows.append((transform, "↑"))
+
+                if not rows:
+                    continue
+
+                # Optional: sort rows nicely
+                rows = sorted(rows, key=lambda x: (x[0], x[1] == "↑"))
+
+                # -----------------------------
+                # Build columns: Δ levels
+                # -----------------------------
+                deltas = sorted({
+                    abs(level - origin)
+                    for level in subset_df["level"].unique()
+                })
+
+                # Always keep baseline (0), then smallest deltas
+                deltas = [0] + sorted([d for d in deltas if d != 0])[: max_cols - 1]
+
+                n_rows = len(rows)
+                n_cols = len(deltas)
+
+                fig, axes = plt.subplots(
+                    n_rows,
+                    n_cols,
+                    figsize=(1.5 * n_cols, 1.5 * n_rows),
+                    squeeze=False
+                )
+
+                # -----------------------------
+                # Global color scale
+                # -----------------------------
+                if normalize:
+                    vmin, vmax = 0, 1
+                else:
+                    vmax = subset_df[["tn", "fp", "fn", "tp"]].values.max()
+                    vmin = 0
+
+                last_row = n_rows - 1
+                for i, (transform, direction) in enumerate(rows):
+                    for j, delta in enumerate(deltas):
+                        ax = axes[i][j]
+
+                        # -----------------------------
+                        # Select correct cell
+                        # -----------------------------
+                        if delta == 0:
+                            cell = subset_df[
+                                subset_df["transform"] == "none"
+                            ]
+                        else:
+                            level = origin - delta if direction == "↓" else origin + delta
+
+                            cell = subset_df[
+                                (subset_df["transform"] == transform) &
+                                (subset_df["level"] == level)
+                            ]
+
+                        if cell.empty:
+                            ax.axis("off")
+                            continue
+
+                        row = cell.iloc[0]
+
+                        tn, fp, fn, tp = row["tn"], row["fp"], row["fn"], row["tp"]
+
+                        raw_cm = np.array([[tn, fp], [fn, tp]], dtype=float)
+                        cm = raw_cm.copy()
+
+                        if normalize:
+                            row_sums = cm.sum(axis=1, keepdims=True)
+                            row_sums[row_sums == 0] = 1
+                            cm = cm / row_sums
+
+                        cmap = "Oranges_r"
+                        im = ax.imshow(cm, vmin=vmin, vmax=vmax, cmap=cmap)
+
+                        ax.set_xticks([])
+                        ax.set_yticks([])
+                        ax.set_xticklabels([])
+                        ax.set_yticklabels([])
+                        
+                        # -----------------------------
+                        # Column titles (Δ space)
+                        # -----------------------------
+                        if i == 0:
+                            if delta == 0:
+                                label = "baseline"
+                            else:
+                                label = f"Δ{int(delta)}"
+                            ax.set_title(label)
+
+                        # -----------------------------
+                        # Row labels
+                        # -----------------------------
+                        if j == 0 and i != last_row:
+                            ax.set_ylabel(f"{transform} {direction}", labelpad=16)
+                        
+                        elif i == last_row and j == 0:
+                            ax.set_ylabel(f"{transform} {direction}", labelpad=4)
+
+                            ax.set_xticks([0, 1])
+                            ax.set_yticks([0, 1])
+                            ax.set_xticklabels(["0", "1"])
+                            ax.set_yticklabels(["0", "1"])    
+
+                        # -----------------------------
+                        # Annotate values
+                        # -----------------------------
+                        for x in range(2):
+                            for y in range(2):
+                                raw_val = int(raw_cm[x, y])
+
+                                if normalize:
+                                    norm_val = cm[x, y]
+                                    text = f"{norm_val:.2f}\n({raw_val})"
+                                else:
+                                    text = f"{raw_val}"
+
+                                ax.text(
+                                    y,
+                                    x,
+                                    text,
+                                    ha="center",
+                                    va="center",
+                                    fontsize=8
+                                )
+
+                        # -----------------------------
+                        # Highlight baseline column
+                        # -----------------------------
+                        if delta == 0:
+                            ax.set_facecolor("#f5f5f5")
+
+                # -----------------------------
+                # Title + colorbar
+                # -----------------------------
+                fig.suptitle(
+                    f"{detector} – {dataset}".upper().replace('_', ' '),
+                    fontsize=16
+                )
+
+
+                plt.tight_layout(rect=[0.03,0.01,0.95,1])
+                plt.subplots_adjust(wspace=0.06, hspace=0.02)
+                fig.supxlabel("Predicted")
+                fig.supylabel("True")
+                cbar_ax = fig.add_axes([0.945, 0.1, 0.02, 0.8])
+                fig.colorbar(im, cax=cbar_ax)
+                
+
+                self._save(f"confusion_{detector}_{dataset}")
 
 
 # ---------------------------------------------------------------------
