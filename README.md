@@ -210,7 +210,7 @@ python3 run.py --aggregate UFD:results:path/to/ufd.csv SAFE:results:path/to/safe
 
 > [!NOTE]
 > The syntax for parameters are:
-> - `--aggregate {dataset1}:{type1}:{path1} {name2}:{type2}:{path2} {name3}:{type3}:{path3}`
+> - `--aggregate {key1}:{type1}:{path1} {key2}:{type2}:{path2} {key3}:{type3}:{path3}`
 > - (optional) `--aggregated-output path/to/aggregated_results.csv`
 
 **2. Display Figures**  
