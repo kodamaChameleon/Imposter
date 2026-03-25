@@ -105,7 +105,7 @@ python3 run.py --split
 
 **UniversalFakeDetect**
 
-Use the original [UniversalFakeDetect](https://github.com/WisconsinAIVision/UniversalFakeDetect) to train the model. 
+It is recommended to use the [UniversalFakeDetect Fork](https://github.com/kodamaChameleon/UniversalFakeDetect) for training and testing. 
 Copy the train and val datasets from Imposter into a new folder in the UniversalFakeDetect datasets. 
 Your dataset structure should look something like:
 ```
@@ -140,14 +140,14 @@ ls -1 /path/to/test/ | awk '{
 }' > formatted_test_paths.txt
 ```
 
-> [!NOTE]
-> The original UniversalFakeDetect repo has missing dependencies and several additional configuration steps to customize for our use case.
-> For your convenience, I have included a [UniversalFakeDetect Fork](https://github.com/kodamaChameleon/UniversalFakeDetect) with a number of the changes already made.
-> Be sure to update the hardcoded paths in `data/datasets.py` and `dataset_paths.py`.
+> [!IMPORTANT]
+> In addition to ease of setup and configuration, 
+> the [UniversalFakeDetect Fork](https://github.com/kodamaChameleon/UniversalFakeDetect) includes additional output metrics useful for analyzing results.
+> I also used **resize** instead of center cropping which removes critical portions of the image for detection.
 
 **SAFE**
 
-Use [SAFE](https://github.com/Ouxiang-Li/SAFE) to train the model. 
+Use [SAFE Fork](https://github.com/kodamaChameleon/SAFE) for training and testing which has been customized for this project. 
 Copy the train and val datasets from Imposter into a new folder in the SAFE datasets. 
 Your dataset structure should look something like:
 ```
@@ -185,10 +185,14 @@ Outputs a csv report including average LPIPS scores across a given transformatio
 - contrast
 - saturation
 
-Transform options defaults to all with 6 variations and a delta of 10. Example usage:
+Transform options defaults to `all` with `6 10 100` as variations, delta, and starting point. Example usage:
 ```bash
-python3 run.py --transform --transform-opt all --transform-level 3 5
+python3 run.py --transform --transform-opt crop --transform-level 3 5
 ```
+
+> [!NOTE]
+> Transform-level starting point defaults to 100 if not specified.
+> The total transform level must not be zero or negative, `start - (variation * delta) > 0`.
 
 **2. By Platform**  
 For demonstrating the real world effects of platform specific transformations, my analysis includes images that have been uploaded, processed, and downloaded again through a limited subset of social media platforms. 
@@ -196,18 +200,36 @@ Duplicating these steps requires a complex setup process and a lot of patience g
 If you wish to replicate this portion of the study, the code for generating these additional test sets is provided for your convenience in `./bots` directory. 
 See [Social Media Bots](./bots/README.md) for more details.
 
-### D. Data Visualization
+### E. Results Display
 
-**1. Normalization**  
-Normalize results into a single csv file:
+**1. Data Aggregation**  
+*If* you used the [SAFE Fork](https://github.com/kodamaChameleon/SAFE) and [SAFE Fork](https://github.com/kodamaChameleon/SAFE) for testing, you should now have three separate csv files: UniversalFakeDetect results, SAFE results, and the transforms file. [Imposter](https://github.com/kodamaChameleon/Imposter) includes a convenient utility for merging these three csv files into a single results file for data analysis and display. It also calculates the averages across all datasets which is listed as its own dataset.
 ```bash
-python3 run.py --normalize path/to/acc0.txt path/to/ap.txt path/to/safe_results.pth_datasets.csv path/to/transforms.csv
+python3 run.py --aggregate UFD:results:path/to/ufd.csv SAFE:results:path/to/safe.csv t:transform:path/to/transforms.csv
 ```
 
-**2. Graph/Tables**  
-For convenience, the KID, CLIP, and normalize test results from UFD and SAFE may be converted into tables and graph .png files using:
+> [!NOTE]
+> The syntax for parameters are:
+> - `--aggregate {key1}:{type1}:{path1} {key2}:{type2}:{path2} {key3}:{type3}:{path3}`
+> - (optional) `--aggregated-output path/to/aggregated_results.csv`
+
+**2. Display Figures**  
+The graph feature creates multiple figures comparing specified metrics to LPIPS scores. The default metrics are accuracy and avg_precision. Use `--graph-metrics` to overide the default.
 ```bash
-python3 run.py --graph path/to/results.csv --graph-type {KID, CLIP, or TEST}
+python3 run.py --graph path/to/aggregated_results.csv
+```
+
+## ✒️ Citing
+
+```bibtex
+@software{kodamaChameleon,
+  author       = {Chameleon, Kodama},
+  title        = {Imposter: Failure Analysis of Deepfake Image Detection In-the-Wild},
+  year         = {2026},
+  url          = {https://github.com/kodamaChameleon/Imposter},
+  institution  = {Georgia Institute of Technology},
+  license      = {MIT}
+}
 ```
 
 ## ✨ Acknowledgements

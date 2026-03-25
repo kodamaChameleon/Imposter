@@ -10,6 +10,10 @@ import os
 from dotenv import load_dotenv
 
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+load_dotenv(PROJECT_ROOT / ".env")
+
+
 CLIP_MODEL = "openai/clip-vit-large-patch14"
 IMG_EXTS = {
     ".jpg", ".jpeg", ".png",
@@ -29,8 +33,8 @@ def load_env(dotenv_path: Path | None = None) -> None:
     Load environment variables from .env if python-dotenv is installed.
     Safe to call multiple times.
     """
-    if load_dotenv is None:
-        return
+    if dotenv_path is None:
+        dotenv_path = Path(__file__).resolve().parents[1] / ".env"
     load_dotenv(dotenv_path=dotenv_path, override=False)
 
 # -------------------------
@@ -100,13 +104,12 @@ class DefaultOptions:
         "all", "compression", "resize", "crop", "contrast", "saturation"
     ])
 
-    transform_level: list[int] = field(default_factory=lambda: [6, 10])
+    transform_level: list[int] = field(default_factory=lambda: [6, 10, 100])
     transform_csv: Path = root / "transforms.csv"
 
-    graph_choices: list[str] = field(default_factory=lambda: [
-        "CLIP", "KID", "TEST"
-    ])
-    normalized_output: Path = root / "test_results.csv"
+    aggregated_output: Path = root / "test_results.csv"
+
+    default_metrics: list[str] = field(default_factory=lambda: ["accuracy", "avg_precision"])
 
 
 @dataclass(frozen=True)
@@ -115,8 +118,8 @@ class KaggleConfig:
     Kaggle expects KAGGLE_USERNAME and KAGGLE_KEY in env,
     or ~/.kaggle/kaggle.json. Prefered .env for local dev/CI.
     """
-    username: str | None = os.getenv("KAGGLE_USERNAME")
-    key: str | None = os.getenv("KAGGLE_API_TOKEN")
+    username: str | None = field(default_factory=lambda: os.getenv("KAGGLE_USERNAME"))
+    key: str | None = field(default_factory=lambda: os.getenv("KAGGLE_API_TOKEN"))
 
 
 @dataclass(frozen=True)

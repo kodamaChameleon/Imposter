@@ -41,13 +41,20 @@ class LPIPSScorer:
             T.Normalize([0.5] * 3, [0.5] * 3),
         ])
 
-    def _load(self, path: Path):
-        img = Image.open(path).convert("RGB")
+    def tensorize(self, img):
         return self.tf(img).unsqueeze(0).to(self.device)
 
     @torch.no_grad()
-    def score(self, ref: Path, img: Path) -> float:
-        return self.model(self._load(ref), self._load(img)).item()
+    def score_batch(self, refs, imgs):
+
+        refs = torch.cat(refs)
+        imgs = torch.cat(imgs)
+
+        scores = self.model(refs, imgs)
+
+        assert refs.device == imgs.device
+
+        return scores.flatten().cpu().tolist()
 
 
 # ------------------------------------------------------------------
@@ -80,9 +87,9 @@ class DatasetTransformer:
         self.scorer = scorer or LPIPSScorer()
 
         self.transforms = {
-            "compression": (self._levels_compression, self._tf_compression),
-            "resize": (self._levels_resize, self._tf_resize),
-            "crop": (self._levels_crop, self._tf_crop),
+            "compression": (self._levels_decreasing, self._tf_compression),
+            "resize": (self._levels_decreasing, self._tf_resize),
+            "crop": (self._levels_decreasing, self._tf_crop),
             "contrast": (self._levels_symmetric, self._tf_contrast),
             "saturation": (self._levels_symmetric, self._tf_saturation),
         }
@@ -91,7 +98,7 @@ class DatasetTransformer:
     # Public API
     # ------------------------------------------------------------------
 
-    def run(self, opts, variations: int, delta: int):
+    def run(self, opts, variations: int, delta: int, start: int):
         """
         Initialize a transformation run
         """
@@ -103,7 +110,7 @@ class DatasetTransformer:
         for name in opts:
             level_fn, tf_fn = self.transforms[name]
 
-            levels = level_fn(variations, delta)
+            levels = level_fn(variations, delta, start)
 
             self._run_levels(name, levels, tf_fn)
 
@@ -111,12 +118,15 @@ class DatasetTransformer:
     # Execution engine
     # ------------------------------------------------------------------
 
-    def _run_levels(self, name, levels, transform_fn):
+    def _run_levels(self, name, levels, transform_fn, batch_size: int = 32):
         """
         Generic wrapper for running transformations
         """
 
         for level in levels:
+            
+            ref_batch = []
+            img_batch = []
 
             lpips_sum = 0.0
             count = 0
@@ -136,16 +146,29 @@ class DatasetTransformer:
 
                         self._save_jpeg(out_img, out_path, quality)
 
-                        score = self.scorer.score(
-                            img_path,
-                            out_path.with_suffix(".jpg")
-                        )
+                        ref_batch.append(self.scorer.tensorize(img))
+                        img_batch.append(self.scorer.tensorize(out_img))
 
-                        lpips_sum += score
-                        count += 1
+                        if len(ref_batch) == batch_size:
+
+                            scores = self.scorer.score_batch(ref_batch, img_batch)
+
+                            for s in scores:
+                                lpips_sum += s
+                                count += 1
+
+                            ref_batch.clear()
+                            img_batch.clear()
 
                 except Exception as e:
                     print(f"[skip] {img_path}: {e}")
+                
+            if ref_batch:
+                scores = self.scorer.score_batch(ref_batch, img_batch)
+
+                for s in scores:
+                    lpips_sum += s
+                    count += 1
 
             mean_lpips = lpips_sum / count if count else 0.0
 
@@ -165,7 +188,8 @@ class DatasetTransformer:
         """
         Re-encode images at varying JPEG quality levels.
         """
-        return img, level
+        q = max(1, min(level, 100))
+        return img, q
 
     def _tf_resize(self, img, level):
         """
@@ -180,8 +204,10 @@ class DatasetTransformer:
         Center-crop images by percentage and re-encode as JPEG.
         """
         w, h = img.size
-        keep = 1 - level / 100
-        new_w, new_h = int(w * keep), int(h * keep)
+        keep = level / 100
+
+        new_w = max(1, int(w * keep))
+        new_h = max(1, int(h * keep))
 
         left = (w - new_w) // 2
         top = (h - new_h) // 2
@@ -204,37 +230,34 @@ class DatasetTransformer:
     # Level generators
     # ------------------------------------------------------------------
 
-    def _levels_compression(self, variations, delta):
-        """Generate decreasing JPEG quality levels from `base_quality`."""
-        base = self.jpeg_cfg.quality
+    def _levels_decreasing(self, variations, delta, start):
+        """
+        Generate decreasing levels starting from `start`.
+        """
         levels = []
         for i in range(variations):
-            q = base - (i + 1) * delta
-            if q <= 0:
+            lvl = start - (i + 1) * delta
+            if lvl <= 0:
                 break
-            levels.append(q)
+            levels.append(lvl)
         return levels
 
-    def _levels_resize(self, variations, delta):
-        """Normalize resizing levels"""
-        return [100 - (i + 1) * delta for i in range(variations) if 100 - (i + 1) * delta > 0]
-
-    def _levels_crop(self, variations, delta):
-        """Normalize cropping levels"""
-        return [(i + 1) * delta for i in range(variations) if (i + 1) * delta < 100]
-
-    def _levels_symmetric(self, variations, delta):
+    def _levels_symmetric(self, variations, delta, start):
         """
-        Return sorted percentage levels symetric around 100
-        where 100 represents original image state.
+        Return sorted levels symmetric around `start`.
         """
         levels = []
+
         for i in range(1, variations + 1):
-            down = 100 - i * delta
-            up = 100 + i * delta
+
+            down = start - i * delta
+            up = start + i * delta
+
             if down > 0:
                 levels.append(down)
+
             levels.append(up)
+
         return sorted(levels)
 
     # ------------------------------------------------------------------
@@ -306,6 +329,7 @@ def run_transform(
     opts,
     variations: int,
     delta: int,
+    start: int,
     report_path: str | Path,
 ):
     """
@@ -316,4 +340,4 @@ def run_transform(
         output_root,
         jpeg_cfg,
         Path(report_path),
-    ).run(opts, variations, delta)
+    ).run(opts, variations, delta, start)

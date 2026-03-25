@@ -4,7 +4,7 @@ Name:        run.py
 Purpose:     Entry point for Imposter operations.
 Author:      Kodama Chameleon <contact@kodamachameleon.com>
 """
-from utils import (
+from src import (
     make_config,
     SplitConfig,
     fetch_all,
@@ -15,7 +15,7 @@ from utils import (
     run_transform,
     parse_args,
     run_graph,
-    run_normalization
+    run_aggregation
 )
 
 
@@ -45,9 +45,9 @@ def main() -> int:
         )
 
         for r in results:
-            print(f"[clip] dataset   : {r.dataset}")
-            print(f"[clip] num_images: {r.num_images}")
-            print(f"[clip] score     : {r.score:.6f}")
+            print(f"[clip] dataset   : {r.dataset_b}")
+            print(f"[clip] num_images: {r.num_images_b}")
+            print(f"[clip] kid_mean     : {r.kid_mean:.6f}")
 
         if args.kid_results:
             print(f"[ok] appended → {args.kid_results}")
@@ -95,6 +95,7 @@ def main() -> int:
             opts=args.transform_opt,
             variations=args.transform_level[0],
             delta=args.transform_level[1],
+            start=args.transform_level[2],
             report_path=args.transform_report,
         )
 
@@ -102,19 +103,19 @@ def main() -> int:
     
     if args.graph:
         results = run_graph(
-            path=args.graph,
-            graph_type=args.graph_type,
+            csv_path=args.graph,
+            metrics=args.graph_metrics
         )
 
         print("[ok] graph complete")
     
-    if args.normalize is not None:
-        results = run_normalization(
-            input_paths=args.normalize,
-            output_path=args.normalized_output
+    if args.aggregate is not None:
+        results = run_aggregation(
+            input_paths=args.aggregate,
+            output_path=args.aggregated_output
         )
 
-        print(f"[ok] normalized results saved to {args.normalized_output}")
+        print(f"[ok] aggregated results saved to {args.aggregated_output}")
 
     return 0
 

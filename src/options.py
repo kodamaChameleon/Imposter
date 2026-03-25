@@ -142,11 +142,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--transform-level",
-        nargs=2,
+        nargs="+",
         type=int,
         default=DEFAULTS.transform_level,
-        metavar=("VARIATIONS", "DELTA"),
-        help=f"Number of variations and decrement step \
+        metavar="INT",
+        help=f"Number of variations, decrement step, and optional starting level \
             (default: {' '.join(map(str, DEFAULTS.transform_level))})."
     )
     parser.add_argument(
@@ -158,24 +158,28 @@ def build_parser() -> argparse.ArgumentParser:
 
     parser.add_argument("--graph", type=Path)
     parser.add_argument(
-        "--graph-type",
-        type=str,
-        choices=DEFAULTS.graph_choices,
-        help=f"Data type of results file \
-            (OPTIONS: {' '.join(DEFAULTS.graph_choices)})"
-    )
-    parser.add_argument(
-        "--normalize",
+        "--graph-metrics",
         nargs="+",
-        type=Path,
-        metavar="PATH",
-        help="Path to results data to normalize (<pathA> <pathB> <pathC> ...)"
+        type=str,
+        default=DEFAULTS.default_metrics,
+        help=f"Metrics to graph. Must be valid csv headers. (default: {' '.join(DEFAULTS.default_metrics)})."
     )
     parser.add_argument(
-        "--normalized-output",
+        "--aggregate",
+        nargs="+",
+        metavar="KEY:TYPE:PATH",
+        help=(
+            "Normalization inputs in format KEY:TYPE:PATH\n"
+            "TYPE must be 'results' or 'transform'\n"
+            "Example:\n"
+            "--aggregate UFD:results:ufd.csv SAFE:results:safe.csv T:transform:transforms.csv"
+        ),
+    )
+    parser.add_argument(
+        "--aggregated-output",
         type=Path,
-        default=DEFAULTS.normalized_output,
-        help="Path to store normalization output.",
+        default=DEFAULTS.aggregated_output,
+        help="Path to store aggregation output.",
     )
 
     return parser
@@ -185,14 +189,6 @@ def validate_args(args: argparse.Namespace) -> argparse.Namespace:
     """
     Validate provided arguments
     """
-
-    # transform-level constraint
-    x_var, x_delta = args.transform_level
-    if x_var * x_delta > 80:
-        raise ValueError(
-            "Transform level cannot be greater than 80% "
-            "(level = variations x delta)"
-        )
 
     # Normalize "all"
     if args.download and "all" in args.download:
@@ -228,6 +224,61 @@ def validate_args(args: argparse.Namespace) -> argparse.Namespace:
             Path(args.transform[0]),
             Path(args.transform[1]),
         ]
+    
+    # transform-level constraint
+    if len(args.transform_level) not in (2, 3):
+        raise ValueError(
+            "--transform-level expects: VARIATIONS DELTA [START]"
+        )
+
+    x_var = args.transform_level[0]
+    x_delta = args.transform_level[1]
+    x_start = args.transform_level[2] if len(args.transform_level) == 3 else 100
+
+    if x_var * x_delta > x_start:
+        raise ValueError(
+            "Transform levels must remain positive "
+            "(start - variations × delta ≥ 0)"
+        )
+
+    args.transform_level = (x_var, x_delta, x_start)
+
+    # Results aggregation
+    if args.aggregate:
+        parsed = []
+
+        for item in args.aggregate:
+            try:
+                key, typ, path_str = item.split(":", 2)
+            except ValueError:
+                raise ValueError(
+                    f"--aggregate expects KEY:TYPE:PATH → got '{item}'"
+                )
+
+            typ = typ.lower()
+
+            if typ not in {"results", "transform"}:
+                raise ValueError(
+                    f"Invalid aggregate type '{typ}' (must be 'results' or 'transform')"
+                )
+
+            path = Path(path_str)
+
+            parsed.append((key, typ, path))
+
+        # sanity checks
+        types = [t for _, t, _ in parsed]
+
+        if "results" not in types:
+            raise ValueError("--aggregate requires at least one results input")
+
+        if "transform" not in types:
+            raise ValueError("--aggregate requires one transform input")
+
+        if types.count("transform") > 1:
+            raise ValueError("--aggregate supports only one transform input")
+
+        args.aggregate = parsed
 
     return args
 
