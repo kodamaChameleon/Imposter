@@ -96,7 +96,7 @@ class DefaultOptions:
     split_ratios: list[float] = field(default_factory=lambda: [0.6, 0.2, 0.2])
 
     split_csv: Path = root / "train_val_test.csv"
-    split_seed: int = 1337
+    split_seed: int = 777
 
     transform_opt: list[str] = field(default_factory=lambda: ["all"])
 
