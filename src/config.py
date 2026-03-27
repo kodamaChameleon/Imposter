@@ -14,11 +14,17 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(PROJECT_ROOT / ".env")
 
 
+# ---------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------
+
 CLIP_MODEL = "openai/clip-vit-large-patch14"
+
 IMG_EXTS = {
     ".jpg", ".jpeg", ".png",
     ".bmp", ".webp", ".tif", ".tiff"
 }
+
 GENERATOR_CHOICES = {
     "FLUX1_schnell",
     "FLUX1_pro",
@@ -26,6 +32,18 @@ GENERATOR_CHOICES = {
     "SDXL",
     "DALLE3",
 }
+
+MERGE_KEYS = ["base_dataset", "transform", "level"]
+
+EXPECTED_COLUMNS = {
+    "testset","accuracy","avg_precision","precision",
+    "recall","f1","roc-auc","tn","fp","fn","tp"
+}
+
+ROUND_COLS = [
+    "accuracy", "avg_precision", "precision",
+    "recall", "f1", "roc-auc"
+]
 
 
 def load_env(dotenv_path: Path | None = None) -> None:
