@@ -317,10 +317,16 @@ class GraphGenerator:
                 # -----------------------------
                 # Title + colorbar
                 # -----------------------------
-                fig.suptitle(
-                    f"{detector} – {dataset}".upper().replace('_', ' '),
-                    fontsize=16
-                )
+                if dataset.lower() == 'average':
+                    fig.suptitle(
+                        f"{detector} – All Datasets".upper().replace('_', ' '),
+                        fontsize=16
+                    )
+                else:
+                    fig.suptitle(
+                        f"{detector} – {dataset}".upper().replace('_', ' '),
+                        fontsize=16
+                    )
 
 
                 plt.tight_layout(rect=[0.03,0.01,0.95,1])

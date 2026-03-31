@@ -7,22 +7,8 @@ Author:      Kodama Chameleon <contact@kodamachameleon.com>
 from pathlib import Path
 import pandas as pd
 
+from .config import MERGE_KEYS, EXPECTED_COLUMNS, ROUND_COLS
 
-# ---------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------
-
-MERGE_KEYS = ["base_dataset", "transform", "level"]
-
-EXPECTED_COLUMNS = {
-    "testset","accuracy","avg_precision","precision",
-    "recall","f1","roc-auc","tn","fp","fn","tp"
-}
-
-ROUND_COLS = [
-    "accuracy", "avg_precision", "precision",
-    "recall", "f1", "roc-auc"
-]
 
 # ---------------------------------------------------------------------
 # Helpers
