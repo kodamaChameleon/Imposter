@@ -101,19 +101,6 @@ def _sfhq_category_from_name(path: Path) -> Optional[str]:
     return gen
 
 
-def _safe_move(src: Path, dst: Path) -> None:
-    """
-    Move efficiently. Path.rename() is best when same filesystem.
-    Fall back to shutil.move otherwise.
-    """
-    dst.parent.mkdir(parents=True, exist_ok=True)
-
-    try:
-        src.rename(dst)
-    except OSError:
-        shutil.move(str(src), str(dst))
-
-
 def _content_hash_rgb1024(img: Image.Image) -> str:
     """
     Hash normalized pixel content (RGB). This ensures duplicates are detected
