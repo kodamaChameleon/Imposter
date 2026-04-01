@@ -7,8 +7,10 @@ Author:      Kodama Chameleon <contact@kodamachameleon.com>
 import argparse
 import sys
 from pathlib import Path
+import os
 
 from .config import DefaultOptions
+
 
 DEFAULTS = DefaultOptions()
 
@@ -28,10 +30,16 @@ def build_parser() -> argparse.ArgumentParser:
         choices=tuple(DEFAULTS.download_choices),
         help=f"Download datasets: {DEFAULTS.download_choices} (ex. --download ffhq tpdne).",
     )
+
+    # Check for .env override
+    root = DEFAULTS.root
+    if len(os.getenv("DATA_ROOT")) > 0:
+        root = os.getenv("DATA_ROOT")
+        
     parser.add_argument(
         "--root",
         type=Path,
-        default=DEFAULTS.root,
+        default=root,
         help=f"Root datasets directory (default: {DEFAULTS.root}).",
     )
 
