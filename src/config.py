@@ -103,10 +103,10 @@ class DefaultOptions:
         default_factory=lambda: ["sliding", "truncate"]
     )
 
-    trainval_set: list[str] = field(default_factory=lambda: ["FLUX1_dev"])
+    trainval_set: list[str] = field(default_factory=lambda: ["FLUX1_dev", "StyleGAN"])
 
     test_set: list[str] = field(default_factory=lambda: [
-        "FLUX1_dev", "FLUX1_pro", "FLUX1_schnell", "SDXL", "TPDNE"
+        "FLUX1_dev", "FLUX1_pro", "FLUX1_schnell", "SDXL", "StyleGAN"
     ])
 
     real_set: str = "FFHQ"

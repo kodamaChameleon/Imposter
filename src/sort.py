@@ -229,8 +229,8 @@ def sort_datasets(root: Path, jpeg: JpegConfig | None = None) -> SortStats:
 
     # Process TPDNE (stylegan images)
     if tpdne_root.exists():
-        for p in tqdm(_iter_images_tpdne(tpdne_root), desc="TPDNE"):
-            handle_one(p, category="TPDNE")
+        for p in tqdm(_iter_images_tpdne(tpdne_root), desc="StyleGAN"):
+            handle_one(p, category="StyleGAN")
 
     # Process SFHQ-T2I (mixed)
     if sfhq_root.exists():
