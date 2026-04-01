@@ -10,3 +10,4 @@ pandas>=2.0
 transformers>=4.40
 lpips
 matplotlib
+tqdm

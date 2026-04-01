@@ -6,12 +6,12 @@ Author:      Kodama Chameleon <contact@kodamachameleon.com>
 """
 import hashlib
 import os
-import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, Iterable, Optional, Set, Tuple
 
 from PIL import Image, ImageOps
+from tqdm import tqdm
 
 from src.config import JpegConfig, GENERATOR_CHOICES
 
@@ -224,21 +224,19 @@ def sort_datasets(root: Path, jpeg: JpegConfig | None = None) -> SortStats:
 
     # Process FFHQ (real images)
     if ffhq_root.exists():
-        for p in _iter_images_ffhq(ffhq_root):
+        for p in tqdm(_iter_images_ffhq(ffhq_root), desc="FFHQ"):
             handle_one(p, category="FFHQ")
 
     # Process TPDNE (stylegan images)
     if tpdne_root.exists():
-        for p in _iter_images_tpdne(tpdne_root):
+        for p in tqdm(_iter_images_tpdne(tpdne_root), desc="TPDNE"):
             handle_one(p, category="TPDNE")
 
     # Process SFHQ-T2I (mixed)
     if sfhq_root.exists():
-        for p in _iter_images_sfhq(sfhq_root):
+        for p in tqdm(_iter_images_sfhq(sfhq_root), desc="SFHQ-T2I"):
             cat = _sfhq_category_from_name(p)
             if cat is None:
-                # If it doesn't match naming convention, treat as unreadable/unknown bucket later
-                # For now: skip with "unreadable" counter to keep stats obvious.
                 stats.unreadable += 1
                 if len(stats.unreadable_examples) < 10:
                     stats.unreadable_examples.append(p)
