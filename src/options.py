@@ -58,7 +58,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--kid-results",
         type=Path,
-        default=DEFAULTS.kid_csv,
+        default=os.path.join(root, DEFAULTS.kid_csv),
         help="CSV file to store KID results (append mode).",
     )
     parser.add_argument(
@@ -77,7 +77,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--clip-results",
         type=Path,
-        default=DEFAULTS.clip_csv,
+        default=os.path.join(root, DEFAULTS.clip_csv),
         help="CSV file to store CLIP results (append mode).",
     )
     parser.add_argument(
@@ -124,7 +124,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--split-csv",
         type=Path,
-        default=DEFAULTS.split_csv,
+        default=os.path.join(root, DEFAULTS.split_csv),
         help=f"Output CSV path for splits (default: {DEFAULTS.split_csv}).")
     parser.add_argument(
         "--split-seed",
@@ -159,7 +159,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
     "--transform-report",
-        default=DEFAULTS.transform_csv,
+        default=os.path.join(root, DEFAULTS.transform_csv),
         help=f"CSV file to store average LPIPS scores per transform level \
             (default: {DEFAULTS.transform_csv})."
     )
@@ -186,7 +186,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--aggregated-output",
         type=Path,
-        default=DEFAULTS.aggregated_output,
+        default=os.path.join(root, DEFAULTS.aggregated_output),
         help="Path to store aggregation output.",
     )
 
