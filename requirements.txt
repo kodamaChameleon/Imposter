@@ -5,7 +5,6 @@ Pillow>=10.0
 numpy
 torch
 torchvision
-xformers
 pandas>=2.0
 transformers>=4.40
 lpips
