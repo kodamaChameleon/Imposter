@@ -99,7 +99,7 @@ python3 run.py --split
 > - `--real-set` specify the dataset for real iamge sampling (default: FFHQ).
 > - `--split-ratios` defines the composition of training to validation and testing. Must sum to 1.0 (default: 0.6 0.2 0.2).
 > - `--split-csv` outputs a csv with headers split, dataset, label and filename (default: datasets/train_val_test.csv).
-> - `--split-seed` ensures reproducability during random selection of images (default: 1337).
+> - `--split-seed` ensures reproducability during random selection of images (default: 777).
 
 ### C. Training
 
