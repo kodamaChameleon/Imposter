@@ -94,8 +94,8 @@ python3 run.py --split
 ```
 > [!NOTE]
 > The split option comes with a number of optional parameters:
-> - `--trainval-set` selects the dataset to use for training and validation. Best practice is to only use one (default: FLUX1_dev).
-> - `--test-set` cross dataset testing (default: FLUX1_dev FLUX1_pro FLUX1_schnell SDXL TPDNE).
+> - `--trainval-set` selects the dataset to use for training and validation. Best practice is to only use one (default: FLUX1_dev, StyleGAN).
+> - `--test-set` cross dataset testing (default: FLUX1_dev FLUX1_pro FLUX1_schnell SDXL StyleGAN).
 > - `--real-set` specify the dataset for real iamge sampling (default: FFHQ).
 > - `--split-ratios` defines the composition of training to validation and testing. Must sum to 1.0 (default: 0.6 0.2 0.2).
 > - `--split-csv` outputs a csv with headers split, dataset, label and filename (default: datasets/train_val_test.csv).
