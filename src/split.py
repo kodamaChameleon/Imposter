@@ -10,6 +10,8 @@ import shutil
 import csv
 from typing import Iterable
 
+from tqdm import tqdm
+
 from .config import IMG_EXTS, SplitConfig
 
 
@@ -96,7 +98,7 @@ def run_split(cfg: SplitConfig):
                 rows.append([split_name, dataset_name, "real", r.name])
 
     # TRAIN / VAL
-    for ds in cfg.trainval_sources:
+    for ds in tqdm(cfg.trainval_sources, desc="Train/Val datasets"):
         files = _list_images(sorted_root / ds)
         train_n, val_n, test_n = _split_counts(len(files), cfg.ratios)
 
@@ -109,7 +111,7 @@ def run_split(cfg: SplitConfig):
         )
 
     # TEST
-    for ds in cfg.test_sources:
+    for ds in tqdm(cfg.test_sources, desc="Test datasets"):
         files = _list_images(sorted_root / ds)
         _, _, test_n = _split_counts(len(files), cfg.ratios)
 
