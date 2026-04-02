@@ -127,17 +127,11 @@ datasets
 ```
 > [!TIP]
 > Dataset paths must be added to dataset_paths.py for UFD.
-> Use the commmand below for a quick shortcut to generating the correct format.
+> The fork includes a simple bash script for formatting dataset_paths.py.
+> ⚠️ **Overwrites** existing dataset_paths.py.
 
 ```bash
-ls -1 /path/to/test/ | awk '{
-  printf "dict(\n"
-  printf "    real_path='\''/path/to/test/%s'\'',\n", $0
-  printf "    fake_path='\''/path/to/test/%s'\'',\n", $0
-  printf "    data_mode='\''wang2020'\'',\n"
-  printf "    key='\''%s'\''\n", $0
-  printf "),\n"
-}' > formatted_test_paths.txt
+bash ./format_test.sh /path/to/test
 ```
 
 > [!IMPORTANT]
