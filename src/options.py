@@ -136,9 +136,9 @@ def build_parser() -> argparse.ArgumentParser:
     # Transform datasets
     parser.add_argument(
         "--transform",
-        nargs=2,
+        nargs="+",
         metavar=("INPUT_ROOT", "OUTPUT_ROOT"),
-        help="Apply dataset transformations."
+        help="Apply dataset transformations. OUTPUT_ROOT is optional.",
     )
 
     parser.add_argument(
@@ -223,15 +223,22 @@ def validate_args(args: argparse.Namespace) -> argparse.Namespace:
 
     # Transform
     if args.transform:
-        if len(args.transform) != 2:
+        if len(args.transform) not in (1, 2):
             raise ValueError(
-                "--transform expects: <input_root> <output_root>"
+                "--transform expects: <input_root> [output_root]"
             )
 
-        args.transform = [
-            Path(args.transform[0]),
-            Path(args.transform[1]),
-        ]
+        input_root = Path(args.transform[0])
+        if not input_root.exists():
+            raise ValueError(f"Input root does not exist: {input_root}")
+
+        if len(args.transform) == 2:
+            output_root = Path(args.transform[1])
+        else:
+            # default: parent of input_root
+            output_root = input_root.parent
+
+        args.transform = [input_root, output_root]
     
     # transform-level constraint
     if len(args.transform_level) not in (2, 3):
