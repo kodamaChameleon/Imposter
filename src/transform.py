@@ -146,8 +146,11 @@ class DatasetTransformer:
 
                         self._save_jpeg(out_img, out_path, quality)
 
-                        ref_batch.append(self.scorer.tensorize(img))
-                        img_batch.append(self.scorer.tensorize(out_img))
+                        with Image.open(out_path.with_suffix(".jpg")) as comp_img:
+                            comp_img = comp_img.convert("RGB")
+
+                            ref_batch.append(self.scorer.tensorize(img))
+                            img_batch.append(self.scorer.tensorize(comp_img))
 
                         if len(ref_batch) == batch_size:
 
