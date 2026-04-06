@@ -9,7 +9,7 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-
+from tqdm import tqdm
 
 class GraphGenerator:
     LINESTYLES = ["-", "--", "-.", ":"]
@@ -86,7 +86,11 @@ class GraphGenerator:
     # ------------------------------------------------------------------
 
     def _graph_metric_vs_lpips(self, y_col: str):
-        for dataset in self.work["dataset"].unique():
+        for dataset in tqdm(
+            self.work["dataset"].unique(),
+            desc=f"{y_col} datasets",
+            leave=False
+        ):
             dsub = self.work[self.work["dataset"] == dataset]
             base_d = self.base[self.base["dataset"] == dataset]
 
