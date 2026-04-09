@@ -156,7 +156,11 @@ class GraphGenerator:
         origin = self.level_origin
 
         for detector in self.df["detector"].unique():
-            for dataset in self.df["dataset"].unique():
+            for dataset in tqdm(
+                self.df["dataset"].unique(),
+                desc=f"{detector} Confusion Matrice",
+                leave=False
+            ):
 
                 subset_df = self.df[
                     (self.df["detector"] == detector) &
