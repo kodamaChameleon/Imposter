@@ -15,6 +15,11 @@ class GraphGenerator:
     LINESTYLES = ["-", "--", "-.", ":"]
     MARKERSIZE = 3
     LINEWIDTH = 2
+    TITLE_SIZE = 14
+    LABEL_SIZE = 12
+    TICK_LENGTH = 7
+    TICK_WIDTH = 1.2
+    LEGEND_SIZE = 12
 
     def __init__(self, csv_path: Path, level_origin: float = 100):
         self.csv_path = csv_path
@@ -136,14 +141,16 @@ class GraphGenerator:
 
                 plt.title(
                     f"{detector} – {dataset.replace('_', ' ')}\n"
-                    f"{y_col.replace('_', ' ')} vs LPIPS".upper()
+                    f"{y_col.replace('_', ' ')} vs LPIPS".upper(),
+                    fontsize=self.TITLE_SIZE
                 )
-                plt.xlabel("lpips")
-                plt.ylabel(y_col.replace("_", " "))
-                plt.legend()
+                plt.xlabel("LPIPS", fontsize=self.LABEL_SIZE)
+                plt.ylabel(y_col.replace("_", " ").upper() + " (%)", fontsize=self.LABEL_SIZE)
+                plt.legend(fontsize=self.LEGEND_SIZE)
 
                 ax = plt.gca()
                 ax.set_xscale("symlog", linthresh=1e-3)
+                ax.tick_params(axis="both", length=self.TICK_LENGTH, width=self.TICK_WIDTH)
                 ax.xaxis.set_major_formatter(plt.ScalarFormatter())
                 ax.ticklabel_format(style="plain", axis="x")
 
@@ -278,21 +285,21 @@ class GraphGenerator:
                                 label = "baseline"
                             else:
                                 label = f"Δ{int(delta)}"
-                            ax.set_title(label)
+                            ax.set_title(label, fontsize=self.TITLE_SIZE)
 
                         # -----------------------------
                         # Row labels
                         # -----------------------------
                         if j == 0 and i != last_row:
-                            ax.set_ylabel(f"{transform} {direction}", labelpad=16)
+                            ax.set_ylabel(f"{transform} {direction}", labelpad=16, fontsize=self.LABEL_SIZE)
                         
                         elif i == last_row and j == 0:
-                            ax.set_ylabel(f"{transform} {direction}", labelpad=4)
+                            ax.set_ylabel(f"{transform} {direction}", labelpad=4, fontsize=self.LABEL_SIZE)
 
                             ax.set_xticks([0, 1])
                             ax.set_yticks([0, 1])
-                            ax.set_xticklabels(["0", "1"])
-                            ax.set_yticklabels(["0", "1"])    
+                            ax.set_xticklabels(["0", "1"], fontsize=self.LABEL_SIZE)
+                            ax.set_yticklabels(["0", "1"], fontsize=self.LABEL_SIZE)    
 
                         # -----------------------------
                         # Annotate values
@@ -313,7 +320,7 @@ class GraphGenerator:
                                     text,
                                     ha="center",
                                     va="center",
-                                    fontsize=8
+                                    fontsize=9
                                 )
 
                         # -----------------------------
@@ -328,12 +335,12 @@ class GraphGenerator:
                 if dataset.lower() == 'average':
                     fig.suptitle(
                         f"{detector} – All Datasets".upper().replace('_', ' '),
-                        fontsize=16
+                        fontsize=self.TITLE_SIZE
                     )
                 else:
                     fig.suptitle(
                         f"{detector} – {dataset}".upper().replace('_', ' '),
-                        fontsize=16
+                        fontsize=self.TITLE_SIZE
                     )
 
 
