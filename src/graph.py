@@ -113,6 +113,7 @@ class GraphGenerator:
                 curve_idx = 0
 
                 origin_val = base_det[y_col].iloc[0]
+                max_lpips_values = []
 
                 for transform in det_sub["transform"].unique():
                     tsub = det_sub[det_sub["transform"] == transform]
@@ -130,6 +131,8 @@ class GraphGenerator:
                         curve = self._with_origin(subset, y_col, origin_val)
 
                         label = transform if suffix is None else f"{transform} {suffix}"
+
+                        max_lpips_values.append(curve["lpips"].max())
 
                         self._plot_curve(
                             curve["lpips"],
@@ -153,6 +156,30 @@ class GraphGenerator:
                 ax.tick_params(axis="both", length=self.TICK_LENGTH, width=self.TICK_WIDTH)
                 ax.xaxis.set_major_formatter(plt.ScalarFormatter())
                 ax.ticklabel_format(style="plain", axis="x")
+
+                if max_lpips_values:
+                    lpips_cm = min(max_lpips_values)
+
+                    plt.axvline(
+                        x=lpips_cm,
+                        color="gray",
+                        linestyle="--",
+                        linewidth=1.5,
+                        label="LPIPS_cm"
+                    )
+
+                    ymin, ymax = plt.ylim()
+                    y_pos = ymin + 0.05 * (ymax - ymin)
+
+                    plt.text(
+                        lpips_cm,
+                        y_pos,
+                        " LPIPS_cm",
+                        rotation=90,
+                        va="bottom",
+                        ha="right",
+                        fontsize=self.LABEL_SIZE-2
+                    )
 
                 plt.tight_layout()
 
