@@ -175,6 +175,11 @@ class DatasetTransformer:
 
             mean_lpips = lpips_sum / count if count else 0.0
 
+            # Print status message
+            print(
+                f"[done] mean_lpips={mean_lpips}"
+            )
+
             self._append_report({
                 "dataset": self.dataset_name,
                 "transform": name,
