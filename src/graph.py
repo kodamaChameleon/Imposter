@@ -347,7 +347,7 @@ class GraphGenerator:
                                     text,
                                     ha="center",
                                     va="center",
-                                    fontsize=9
+                                    fontsize=10
                                 )
 
                         # -----------------------------
@@ -362,12 +362,12 @@ class GraphGenerator:
                 if dataset.lower() == 'average':
                     fig.suptitle(
                         f"{detector} – All Datasets".upper().replace('_', ' '),
-                        fontsize=self.TITLE_SIZE
+                        fontsize=self.TITLE_SIZE + 4
                     )
                 else:
                     fig.suptitle(
                         f"{detector} – {dataset}".upper().replace('_', ' '),
-                        fontsize=self.TITLE_SIZE
+                        fontsize=self.TITLE_SIZE  + 4
                     )
 
 
