@@ -94,12 +94,12 @@ python3 run.py --split
 ```
 > [!NOTE]
 > The split option comes with a number of optional parameters:
-> - `--trainval-set` selects the dataset to use for training and validation. Best practice is to only use one (default: FLUX1_dev).
-> - `--test-set` cross dataset testing (default: FLUX1_dev FLUX1_pro FLUX1_schnell SDXL TPDNE).
+> - `--trainval-set` selects the dataset to use for training and validation. Best practice is to only use one (default: FLUX1_dev, StyleGAN).
+> - `--test-set` cross dataset testing (default: FLUX1_dev FLUX1_pro FLUX1_schnell SDXL StyleGAN).
 > - `--real-set` specify the dataset for real iamge sampling (default: FFHQ).
 > - `--split-ratios` defines the composition of training to validation and testing. Must sum to 1.0 (default: 0.6 0.2 0.2).
 > - `--split-csv` outputs a csv with headers split, dataset, label and filename (default: datasets/train_val_test.csv).
-> - `--split-seed` ensures reproducability during random selection of images (default: 1337).
+> - `--split-seed` ensures reproducability during random selection of images (default: 777).
 
 ### C. Training
 
@@ -127,17 +127,11 @@ datasets
 ```
 > [!TIP]
 > Dataset paths must be added to dataset_paths.py for UFD.
-> Use the commmand below for a quick shortcut to generating the correct format.
+> The fork includes a simple bash script for formatting dataset_paths.py.
+> ⚠️ **Overwrites** existing dataset_paths.py.
 
 ```bash
-ls -1 /path/to/test/ | awk '{
-  printf "dict(\n"
-  printf "    real_path='\''/path/to/test/%s'\'',\n", $0
-  printf "    fake_path='\''/path/to/test/%s'\'',\n", $0
-  printf "    data_mode='\''wang2020'\'',\n"
-  printf "    key='\''%s'\''\n", $0
-  printf "),\n"
-}' > formatted_test_paths.txt
+bash ./format_test.sh /path/to/test
 ```
 
 > [!IMPORTANT]
@@ -187,12 +181,13 @@ Outputs a csv report including average LPIPS scores across a given transformatio
 
 Transform options defaults to `all` with `6 10 100` as variations, delta, and starting point. Example usage:
 ```bash
-python3 run.py --transform --transform-opt crop --transform-level 3 5
+python3 run.py --transform /path/to/original_dataset --transform-opt crop --transform-level 3 5
 ```
 
 > [!NOTE]
-> Transform-level starting point defaults to 100 if not specified.
-> The total transform level must not be zero or negative, `start - (variation * delta) > 0`.
+> - Transform-level starting point defaults to 100 if not specified.
+> - The total transform level must not be zero or negative, `start - (variation * delta) > 0`.
+> - The default output is the parent directory of the input dataset.
 
 **2. By Platform**  
 For demonstrating the real world effects of platform specific transformations, my analysis includes images that have been uploaded, processed, and downloaded again through a limited subset of social media platforms. 

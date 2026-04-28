@@ -95,25 +95,25 @@ class DefaultOptions:
     kid_choices: list[str] = field(
         default_factory=lambda: ["inception", "dinov2_vitb14"]
     )
-    kid_csv: Path = root / "KID_scores.csv"
+    kid_csv: Path = "KID_scores.csv"
 
     clip_mode: str = "sliding"
-    clip_csv: Path = root / "CLIP_scores.csv"
+    clip_csv: Path = "CLIP_scores.csv"
     clip_choices: list[str] = field(
         default_factory=lambda: ["sliding", "truncate"]
     )
 
-    trainval_set: list[str] = field(default_factory=lambda: ["FLUX1_dev"])
+    trainval_set: list[str] = field(default_factory=lambda: ["FLUX1_dev", "StyleGAN"])
 
     test_set: list[str] = field(default_factory=lambda: [
-        "FLUX1_dev", "FLUX1_pro", "FLUX1_schnell", "SDXL", "TPDNE"
+        "FLUX1_dev", "FLUX1_pro", "FLUX1_schnell", "SDXL", "StyleGAN"
     ])
 
     real_set: str = "FFHQ"
 
     split_ratios: list[float] = field(default_factory=lambda: [0.6, 0.2, 0.2])
 
-    split_csv: Path = root / "train_val_test.csv"
+    split_csv: Path = "train_val_test.csv"
     split_seed: int = 777
 
     transform_opt: list[str] = field(default_factory=lambda: ["all"])
@@ -123,9 +123,9 @@ class DefaultOptions:
     ])
 
     transform_level: list[int] = field(default_factory=lambda: [6, 10, 100])
-    transform_csv: Path = root / "transforms.csv"
+    transform_csv: Path = "transforms.csv"
 
-    aggregated_output: Path = root / "test_results.csv"
+    aggregated_output: Path = "test_results.csv"
 
     default_metrics: list[str] = field(default_factory=lambda: ["accuracy", "avg_precision"])
 

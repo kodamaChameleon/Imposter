@@ -9,12 +9,17 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-
+from tqdm import tqdm
 
 class GraphGenerator:
     LINESTYLES = ["-", "--", "-.", ":"]
     MARKERSIZE = 3
     LINEWIDTH = 2
+    TITLE_SIZE = 14
+    LABEL_SIZE = 12
+    TICK_LENGTH = 7
+    TICK_WIDTH = 1.2
+    LEGEND_SIZE = 12
 
     def __init__(self, csv_path: Path, level_origin: float = 100):
         self.csv_path = csv_path
@@ -86,7 +91,11 @@ class GraphGenerator:
     # ------------------------------------------------------------------
 
     def _graph_metric_vs_lpips(self, y_col: str):
-        for dataset in self.work["dataset"].unique():
+        for dataset in tqdm(
+            self.work["dataset"].unique(),
+            desc=f"{y_col} datasets",
+            leave=False
+        ):
             dsub = self.work[self.work["dataset"] == dataset]
             base_d = self.base[self.base["dataset"] == dataset]
 
@@ -104,6 +113,7 @@ class GraphGenerator:
                 curve_idx = 0
 
                 origin_val = base_det[y_col].iloc[0]
+                max_lpips_values = []
 
                 for transform in det_sub["transform"].unique():
                     tsub = det_sub[det_sub["transform"] == transform]
@@ -122,6 +132,8 @@ class GraphGenerator:
 
                         label = transform if suffix is None else f"{transform} {suffix}"
 
+                        max_lpips_values.append(curve["lpips"].max())
+
                         self._plot_curve(
                             curve["lpips"],
                             curve[y_col],
@@ -132,16 +144,42 @@ class GraphGenerator:
 
                 plt.title(
                     f"{detector} – {dataset.replace('_', ' ')}\n"
-                    f"{y_col.replace('_', ' ')} vs LPIPS".upper()
+                    f"{y_col.replace('_', ' ')} vs LPIPS".upper(),
+                    fontsize=self.TITLE_SIZE
                 )
-                plt.xlabel("lpips")
-                plt.ylabel(y_col.replace("_", " "))
-                plt.legend()
+                plt.xlabel("LPIPS", fontsize=self.LABEL_SIZE)
+                plt.ylabel(y_col.replace("_", " ").upper() + " (%)", fontsize=self.LABEL_SIZE)
+                plt.legend(fontsize=self.LEGEND_SIZE)
 
                 ax = plt.gca()
                 ax.set_xscale("symlog", linthresh=1e-3)
+                ax.tick_params(axis="both", length=self.TICK_LENGTH, width=self.TICK_WIDTH)
                 ax.xaxis.set_major_formatter(plt.ScalarFormatter())
                 ax.ticklabel_format(style="plain", axis="x")
+
+                if max_lpips_values:
+                    lpips_cm = min(max_lpips_values)
+
+                    plt.axvline(
+                        x=lpips_cm,
+                        color="gray",
+                        linestyle="--",
+                        linewidth=1.5,
+                        label="LPIPS_cm"
+                    )
+
+                    ymin, ymax = plt.ylim()
+                    y_pos = ymin + 0.05 * (ymax - ymin)
+
+                    plt.text(
+                        lpips_cm,
+                        y_pos,
+                        " LPIPS_cm",
+                        rotation=90,
+                        va="bottom",
+                        ha="right",
+                        fontsize=self.LABEL_SIZE-2
+                    )
 
                 plt.tight_layout()
 
@@ -152,7 +190,11 @@ class GraphGenerator:
         origin = self.level_origin
 
         for detector in self.df["detector"].unique():
-            for dataset in self.df["dataset"].unique():
+            for dataset in tqdm(
+                self.df["dataset"].unique(),
+                desc=f"{detector} Confusion Matrice",
+                leave=False
+            ):
 
                 subset_df = self.df[
                     (self.df["detector"] == detector) &
@@ -270,21 +312,21 @@ class GraphGenerator:
                                 label = "baseline"
                             else:
                                 label = f"Δ{int(delta)}"
-                            ax.set_title(label)
+                            ax.set_title(label, fontsize=self.TITLE_SIZE)
 
                         # -----------------------------
                         # Row labels
                         # -----------------------------
                         if j == 0 and i != last_row:
-                            ax.set_ylabel(f"{transform} {direction}", labelpad=16)
+                            ax.set_ylabel(f"{transform} {direction}", labelpad=16, fontsize=self.LABEL_SIZE)
                         
                         elif i == last_row and j == 0:
-                            ax.set_ylabel(f"{transform} {direction}", labelpad=4)
+                            ax.set_ylabel(f"{transform} {direction}", labelpad=4, fontsize=self.LABEL_SIZE)
 
                             ax.set_xticks([0, 1])
                             ax.set_yticks([0, 1])
-                            ax.set_xticklabels(["0", "1"])
-                            ax.set_yticklabels(["0", "1"])    
+                            ax.set_xticklabels(["0", "1"], fontsize=self.LABEL_SIZE)
+                            ax.set_yticklabels(["0", "1"], fontsize=self.LABEL_SIZE)    
 
                         # -----------------------------
                         # Annotate values
@@ -305,7 +347,7 @@ class GraphGenerator:
                                     text,
                                     ha="center",
                                     va="center",
-                                    fontsize=8
+                                    fontsize=10
                                 )
 
                         # -----------------------------
@@ -320,12 +362,12 @@ class GraphGenerator:
                 if dataset.lower() == 'average':
                     fig.suptitle(
                         f"{detector} – All Datasets".upper().replace('_', ' '),
-                        fontsize=16
+                        fontsize=self.TITLE_SIZE + 4
                     )
                 else:
                     fig.suptitle(
                         f"{detector} – {dataset}".upper().replace('_', ' '),
-                        fontsize=16
+                        fontsize=self.TITLE_SIZE  + 4
                     )
 
 

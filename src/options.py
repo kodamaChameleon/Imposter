@@ -7,8 +7,10 @@ Author:      Kodama Chameleon <contact@kodamachameleon.com>
 import argparse
 import sys
 from pathlib import Path
+import os
 
 from .config import DefaultOptions
+
 
 DEFAULTS = DefaultOptions()
 
@@ -28,10 +30,16 @@ def build_parser() -> argparse.ArgumentParser:
         choices=tuple(DEFAULTS.download_choices),
         help=f"Download datasets: {DEFAULTS.download_choices} (ex. --download ffhq tpdne).",
     )
+
+    # Check for .env override
+    root = DEFAULTS.root
+    if len(os.getenv("DATA_ROOT")) > 0:
+        root = os.getenv("DATA_ROOT")
+        
     parser.add_argument(
         "--root",
         type=Path,
-        default=DEFAULTS.root,
+        default=root,
         help=f"Root datasets directory (default: {DEFAULTS.root}).",
     )
 
@@ -50,7 +58,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--kid-results",
         type=Path,
-        default=DEFAULTS.kid_csv,
+        default=os.path.join(root, DEFAULTS.kid_csv),
         help="CSV file to store KID results (append mode).",
     )
     parser.add_argument(
@@ -69,7 +77,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--clip-results",
         type=Path,
-        default=DEFAULTS.clip_csv,
+        default=os.path.join(root, DEFAULTS.clip_csv),
         help="CSV file to store CLIP results (append mode).",
     )
     parser.add_argument(
@@ -116,7 +124,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--split-csv",
         type=Path,
-        default=DEFAULTS.split_csv,
+        default=os.path.join(root, DEFAULTS.split_csv),
         help=f"Output CSV path for splits (default: {DEFAULTS.split_csv}).")
     parser.add_argument(
         "--split-seed",
@@ -128,9 +136,9 @@ def build_parser() -> argparse.ArgumentParser:
     # Transform datasets
     parser.add_argument(
         "--transform",
-        nargs=2,
+        nargs="+",
         metavar=("INPUT_ROOT", "OUTPUT_ROOT"),
-        help="Apply dataset transformations."
+        help="Apply dataset transformations. OUTPUT_ROOT is optional.",
     )
 
     parser.add_argument(
@@ -151,7 +159,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
     "--transform-report",
-        default=DEFAULTS.transform_csv,
+        default=os.path.join(root, DEFAULTS.transform_csv),
         help=f"CSV file to store average LPIPS scores per transform level \
             (default: {DEFAULTS.transform_csv})."
     )
@@ -178,7 +186,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--aggregated-output",
         type=Path,
-        default=DEFAULTS.aggregated_output,
+        default=os.path.join(root, DEFAULTS.aggregated_output),
         help="Path to store aggregation output.",
     )
 
@@ -215,15 +223,22 @@ def validate_args(args: argparse.Namespace) -> argparse.Namespace:
 
     # Transform
     if args.transform:
-        if len(args.transform) != 2:
+        if len(args.transform) not in (1, 2):
             raise ValueError(
-                "--transform expects: <input_root> <output_root>"
+                "--transform expects: <input_root> [output_root]"
             )
 
-        args.transform = [
-            Path(args.transform[0]),
-            Path(args.transform[1]),
-        ]
+        input_root = Path(args.transform[0])
+        if not input_root.exists():
+            raise ValueError(f"Input root does not exist: {input_root}")
+
+        if len(args.transform) == 2:
+            output_root = Path(args.transform[1])
+        else:
+            # default: parent of input_root
+            output_root = input_root.parent
+
+        args.transform = [input_root, output_root]
     
     # transform-level constraint
     if len(args.transform_level) not in (2, 3):

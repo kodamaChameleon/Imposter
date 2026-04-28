@@ -16,6 +16,7 @@ from torch import nn
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 from torchvision.models import inception_v3, Inception_V3_Weights
+from tqdm import tqdm
 
 from .config import IMG_EXTS
 
@@ -258,7 +259,7 @@ def extract_features(
     model.eval()
 
     feats: List[np.ndarray] = []
-    for batch in dl:
+    for batch in tqdm(dl, desc=f"Extracting ({dataset_name})"):
         batch = batch.to(device, non_blocking=True)
         f = model(batch)
         feats.append(f.detach().cpu().numpy().astype(np.float32))
